@@ -9,6 +9,7 @@ setup(name='dsptypes',
       packages=find_packages(),
       install_requires=[
           'pint>=0.9',
+          'sympy>=1.4',
           'numpy>=1.16.3',
           'pandas>=0.24.2',
           'matplotlib>=3.0.3',
