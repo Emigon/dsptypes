@@ -3,9 +3,11 @@ import pytest
 from sympy import *
 from sympy.abc import x, y, tau, alpha
 
-from dsptypes import Parametric1D
+from dsptypes import *
 
-@pytest.fixture(scope = "session")
+import matplotlib.pyplot as plt
+
+@pytest.fixture
 def model():
     # <symbol> : (lower limit, setpoint, upper limit)
     parameters = {
@@ -14,6 +16,12 @@ def model():
     }
 
     return {'expr': exp(tau*x) + alpha, 'params': parameters}
+
+@pytest.fixture
+def sinusoid():
+    fs = 20e3
+    t = np.arange(0, 0.1, 1/fs)
+    return Signal1D(np.sin(2*np.pi*1e3*t), xunits = ureg('s'), xlims = (0, 1))
 
 def test_correct_init(model):
     try:
@@ -72,15 +80,29 @@ def test_parameter_modification(model):
     with pytest.raises(Exception) as e_info:
         pm.v['tau'] = 6
 
-def test_snr_setup(model):
-    pm = Parametric1D(*model.values(), minsnr = -3, maxsnr = 3)
-    pm.v['snr'] = 0
-    assert pm.v['alpha'] == 0
+def test_call(model):
+    pm = Parametric1D(*model.values())
 
-    # try to set snr outside of the specified ranges. should raise an error
-    with pytest.raises(Exception) as e_info:
-        pm.v['tau'] = 10
+    x = np.linspace(0, 1, 100)
+    y_np = np.exp(model['params']['tau'][1]*x) + model['params']['alpha'][1]
 
-    # try to instantiate a model with impossible snr limits
-    with pytest.raises(Exception) as e_info:
-        pm = Parametric1D(*model.values(), minsnr = 3, maxsnr = -3)
+    y = pm(x, xunits = ureg('s'))
+    assert y_np == pytest.approx(y.values)
+
+    np.random.seed(42)
+    y_noisy = pm(x, xunits = ureg('s'), snr = 30)
+    assert y_np == pytest.approx(y_noisy.values, rel = 1e-3)
+
+@pytest.mark.plot
+def test_gui(model, sinusoid):
+    pm = Parametric1D(*model.values())
+    pm.gui(np.linspace(0, 1, 100), xunits = ureg('s'),\
+            persistent_signals = [sinusoid])
+    pm.gui(np.linspace(0, 1, 100), fft = True, xunits = ureg('s'))
+
+@pytest.mark.plot
+def test_sample(model):
+    pm = Parametric1D(*model.values())
+    for sigma in pm.sample(10, np.linspace(0, 1, 100), snr = 20):
+        sigma.plot()
+    plt.show()

@@ -16,20 +16,9 @@ def dc():
     return np.ones(t.shape, dtype = complex)
 
 def test_correct_init(sinusoid):
-    try:
-        y = Signal1D(sinusoid)
-    except:
-        assert False
-
-    try:
-        y = Signal1D(sinusoid, xunits = ureg('us'), xlims = (-1, 10))
-    except:
-        assert False
-
-    try:
-        y = Signal1D(sinusoid, xunits = ureg('Hz'), xcentspan = (0, 10))
-    except:
-        assert False
+    y = Signal1D(sinusoid)
+    y = Signal1D(sinusoid, xunits = ureg('us'), xlims = (-1, 10))
+    y = Signal1D(sinusoid, xunits = ureg('Hz'), xcentspan = (0, 10))
 
 def test_bad_xdef(sinusoid):
     with pytest.raises(Exception) as e_info:
@@ -55,26 +44,31 @@ def test_pwr(dc):
 
 def test_fs(sinusoid):
     y = Signal1D(sinusoid, xunits = ureg('s'), xlims = (0, 0.1))
-    assert y.fs == 20e3*ureg('Hz')
+    assert y.fs.to('Hz').magnitude == pytest.approx(20e3)
 
 def test_fft(sinusoid):
     y = Signal1D(sinusoid, xunits = ureg('s'), xlims = (0, 0.1))
     fft = y.fft()
 
     # make sure that the peak frequency is at 1kHz as specified
-    peak = fft.x[np.argmax(np.abs(fft.z.values))]
-    assert np.abs(peak).to_base_units().magnitude \
-            == pytest.approx(1.0*ureg('kHz').to_base_units().magnitude)
+    assert np.abs(fft.abs().idxmax()).to('kHz').magnitude == pytest.approx(1.0)
 
     assert y.pwr == pytest.approx(fft.pwr)
 
-@pytest.mark.skip(reason="for plot inspection only")
+def test_metric(sinusoid, dc):
+    y1 = Signal1D(sinusoid[:len(dc)])
+    y2 = Signal1D(dc)
+
+    assert y1@y1 == pytest.approx(0.0)
+    assert y1@y2 == pytest.approx(2.121320)
+
+@pytest.mark.plot
 def test_plotz(sinusoid):
     y = Signal1D(sinusoid)
     y.plotz()
     plt.show()
 
-@pytest.mark.skip(reason="for plot inspection only")
+@pytest.mark.plot
 def test_plot(sinusoid):
     y = Signal1D(sinusoid)
     y.plot()
