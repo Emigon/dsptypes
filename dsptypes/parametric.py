@@ -18,10 +18,12 @@ from matplotlib.widgets import Slider, RadioButtons
 import sympy
 from sympy import *
 
-from dsptypes import *
-from .signal1D import *
+from scipy.optimize import shgo
 
 from collections.abc import MutableMapping
+
+from dsptypes import *
+from .signal1D import *
 
 class ParameterDict(MutableMapping):
     def __init__(self, params):
@@ -114,6 +116,10 @@ class Parametric1D(object):
                         for algorithm testing
         """
         z = lambdify(self._free_var, self.expr.subs(self.v), "numpy")(x)
+
+        if  not(hasattr(z, '__iter__')):
+            # we have unintentionally simplified self.expr to a constant
+            z = np.array(len(x)*[z])
 
         if snr < np.inf:
             noise = dist(size = len(z))
@@ -245,3 +251,14 @@ class Parametric1D(object):
             for p in self.v:
                 self.v[p] = np.random.uniform(low = self.v._l[p], high = self.v._u[p])
             yield self(x, **callkwargs)
+
+    def fitshgo(self, signal1D, n = 200, iters = 5):
+        """ fit self to signal1D using shgo and normalised least sqaures metric """
+        b = [(self.v._l[k], self.v._u[k]) for k in self.v]
+        def errf(v):
+            for i, k in enumerate(self.v):
+                self.v[k] = v[i]
+            return self(signal1D.x.magnitude, signal1D.xunits) @ signal1D
+
+        result = shgo(errf, bounds = b, n = n, iters = iters)
+        return result

@@ -106,3 +106,10 @@ def test_sample(model):
     for sigma in pm.sample(10, np.linspace(0, 1, 100), snr = 20):
         sigma.plot()
     plt.show()
+
+@pytest.mark.plot
+def test_fit(model, sinusoid):
+    pm = Parametric1D(*model.values())
+    opt_result = pm.fitshgo(sinusoid)
+    pm.gui(sinusoid.x.magnitude, xunits = sinusoid.xunits,
+            persistent_signals = [sinusoid])
