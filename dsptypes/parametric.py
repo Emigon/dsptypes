@@ -252,13 +252,13 @@ class Parametric1D(object):
                 self.v[p] = np.random.uniform(low = self.v._l[p], high = self.v._u[p])
             yield self(x, **callkwargs)
 
-    def fitshgo(self, signal1D, n = 200, iters = 5):
+    def fitshgo(self, signal1D, n = 200, iters = 5, tform = lambda z : z):
         """ fit self to signal1D using shgo and normalised least sqaures metric """
         b = [(self.v._l[k], self.v._u[k]) for k in self.v]
         def errf(v):
             for i, k in enumerate(self.v):
                 self.v[k] = v[i]
-            return self(signal1D.x.magnitude, signal1D.xunits) @ signal1D
+            return tform(self(signal1D.x.magnitude, signal1D.xunits)) @ signal1D
 
-        result = shgo(errf, bounds = b, n = n, iters = iters)
+        result = shgo(errf, bounds = b, n = n, iters = iters, sampling_method = 'sobol')
         return result
