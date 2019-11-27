@@ -14,6 +14,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+from copy import deepcopy
+
 from dsptypes import *
 
 plotting_styles = \
@@ -26,6 +28,13 @@ plotting_styles = \
         'real': lambda z : np.real(z),
         'imag': lambda z : np.imag(z),
     }
+
+def return_copy(name):
+    def wrapper(obj, *args, **kwargs):
+        cp = deepcopy(obj)
+        cp._z = getattr(cp._z, name)(*args, **kwargs)
+        return cp
+    return wrapper
 
 class Signal1D(object):
     def __init__(self,
@@ -74,22 +83,64 @@ class Signal1D(object):
 
         self._z = pd.Series(np.complex128(z), index = self.x.magnitude)
 
-        # {{{ partially inherit arithmetic pandas methods
-        methods = [
-            '__add__',
-            '__sub__',
-            '__mul__',
-            '__div__',
-            '__eq__',
-            '__lt__',
-            '__le__',
-            '__gt__',
-            '__le__',
-        ]
+        # {{{ partially inherit from pandas Series
+        setattr(Signal1D, '__len__', lambda obj: getattr(obj._z, '__len__')())
+        setattr(Signal1D, '__repr__', lambda obj : getattr(obj._z, '__repr__')())
+        setattr(Signal1D, 'sum', lambda obj: getattr(obj._z, 'sum')())
+        setattr(Signal1D, 'min', lambda obj: getattr(obj._z, 'min')())
+        setattr(Signal1D, 'max', lambda obj: getattr(obj._z, 'max')())
 
-        for method in methods:
-            self.__dict__[method] = pd.Series.__dict__[method]
+        setattr(Signal1D, 'idxmin',
+                lambda obj: obj.xunits.units * getattr(obj._z, 'idxmin')())
+        setattr(Signal1D, 'idxmax',
+                lambda obj: obj.xunits.units * getattr(obj._z, 'idxmax')())
+
+        setattr(Signal1D, 'abs', lambda obj : return_copy('abs')(obj))
+
+        setattr(Signal1D, '__add__', lambda obj, oth: return_copy('__add__')(obj, oth))
+        setattr(Signal1D, '__radd__', lambda obj, oth: return_copy('__add__')(obj, oth))
+
+        setattr(Signal1D, '__sub__', lambda obj, oth: return_copy('__sub__')(obj, oth))
+        setattr(Signal1D, '__rsub__', lambda obj, oth: return_copy('__sub__')(obj, oth))
+
+        setattr(Signal1D, '__mul__', lambda obj, oth: return_copy('__mul__')(obj, oth))
+        setattr(Signal1D, '__rmul__', lambda obj, oth: return_copy('__mul__')(obj, oth))
+
+        setattr(Signal1D, '__truediv__',
+                lambda obj, oth: return_copy('__truediv__')(obj, oth))
+        setattr(Signal1D, '__rtruediv__',
+                lambda obj, oth: return_copy('__rtruediv__')(obj, oth))
         # }}}
+
+    # {{{ partially inherit from pandas Series
+    @property
+    def values(self):
+        return self._z.values
+
+    @property
+    def index(self):
+        return self._z.index
+
+    def real(self):
+        return Signal1D(self._z.real.values, xraw = self._x, xunits = self.xunits)
+
+    def imag(self):
+        return Signal1D(self._z.imag.values, xraw = self._x, xunits = self.xunits)
+
+    def __eq__(self, other):
+        result = deepcopy(self)
+        if type(other) is not Signal1D:
+            raise TypeError('can only compare Signal1D to Signal1D')
+        result._z = getattr(result._z, '__eq__')(other._z)
+        return result
+
+    def __ne__(self, other):
+        result = deepcopy(self)
+        if type(other) is not Signal1D:
+            raise TypeError('can only compare Signal1D to Signal1D')
+        result._z = getattr(result._z, '__ne__')(other._z)
+        return result
+    # }}}
 
     def fft(self):
         """ returns a Signal1D of the fft of self """
@@ -132,48 +183,8 @@ class Signal1D(object):
             raise TypeError('xunits must be a pint datatype')
         self._xunits = val
 
-    # {{{ partial inheritence of pandas  Series
-    @property
-    def values(self):
-        return self._z.values
-
-    @property
-    def index(self):
-        return self._z.index
-
-    def __abs__(self):
-        return self._z.abs()
-
-    def __sum__(self):
-        return sum(self._z)
-
-    def __len__(self):
-        return len(self._z)
-
-    def __repr__(self):
-        return self._z.__repr__()
-    # }}}
-
-    def max(self):
-        return np.real(self._z).max()
-
-    def min(self):
-        return np.real(self._z).min()
-
-    def idxmax(self):
-        return self._z.index[self._z.real.argmax()] * self.xunits.units
-
-    def idxmin(self):
-        return self._z.index[self._z.real.argmin()] * self.xunits.units
-
-    def real(self):
-        return Signal1D(self._z.real.values, xraw = self._x, xunits = self.xunits)
-
-    def imag(self):
-        return Signal1D(self._z.imag.values, xraw = self._x, xunits = self.xunits)
-
-    def abs(self):
-        return Signal1D(self._z.abs().values, xraw = self._x, xunits = self.xunits)
+    def copy(self):
+        return deepcopy(self)
 
     @property
     def fs(self):
@@ -184,6 +195,9 @@ class Signal1D(object):
         return np.linalg.norm(self.values)**2
 
     def __matmul__(self, other):
-        """ @ produces a normalised and symmetric goodness of fit metric """
-        return np.linalg.norm(self.values - other.values)**2 / \
-                    (np.linalg.norm(self.values)*(np.linalg.norm(other.values)))
+        """ @ produces a symmetric goodness of fit metric """
+        return np.linalg.norm(self.values - other.values)**2
+
+    def normalise(self):
+        return Signal1D(self._z.values/np.linalg.norm(self.values),
+                            xraw = self._x, xunits = self.xunits)

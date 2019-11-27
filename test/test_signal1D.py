@@ -60,7 +60,7 @@ def test_metric(sinusoid, dc):
     y2 = Signal1D(dc)
 
     assert y1@y1 == pytest.approx(0.0)
-    assert y1@y2 == pytest.approx(2.121320)
+    assert y1@y2 == pytest.approx(1500)
 
 @pytest.mark.plot
 def test_plotz(sinusoid):
@@ -75,3 +75,26 @@ def test_plot(sinusoid):
     plt.show()
     y.plot(style = 'dBm')
     plt.show()
+
+def test_copy(sinusoid):
+    y1 = Signal1D(sinusoid)
+    y2 = y1.copy()
+
+    y2._z *= 0
+    assert np.all(y2._z == 0)
+    assert not(np.all(y1._z == 0))
+
+def test_arithmetic(sinusoid):
+    y = Signal1D(sinusoid)
+
+    assert np.all((y + 5)._z == y._z + 5)
+    assert np.all((5 + y)._z == y._z + 5)
+    assert np.all((y - 6)._z == y._z - 6)
+    assert np.all((7 - y)._z == y._z - 7)
+    assert np.all((y * 20)._z == y._z * 20)
+    assert np.all((15 * y)._z == y._z * 15)
+    assert np.all((y / .1)._z == y._z / .1)
+    assert np.all((.1 / (y + 3))._z == .1 / (y._z + 3))
+
+    # test equality operator
+    assert np.all(6*y + 4 != y)
