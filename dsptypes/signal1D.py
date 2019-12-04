@@ -189,7 +189,7 @@ class Signal1D(object):
 
     @property
     def fs(self):
-        return 1.0/min(np.diff(self.x)) * 1/self.xunits
+        return 1.0/min(np.diff(self._x)) * 1/self.xunits
 
     @property
     def pwr(self):
