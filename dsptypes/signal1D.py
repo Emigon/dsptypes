@@ -32,7 +32,10 @@ plotting_styles = \
 def return_copy(name):
     def wrapper(obj, *args, **kwargs):
         cp = deepcopy(obj)
-        cp._z = getattr(cp._z, name)(*args, **kwargs)
+        if len(args) > 0 and type(args[0]) is Signal1D:
+            cp._z = getattr(cp._z, name)(args[0]._z, *args[1:], **kwargs)
+        else:
+            cp._z = getattr(cp._z, name)(*args, **kwargs)
         return cp
     return wrapper
 
