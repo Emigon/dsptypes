@@ -128,7 +128,8 @@ class Parametric1D(object):
 
         return Signal1D(z, xunits = xunits, xraw = x)
 
-    def gui(self, x, fft = False, persistent_signals = [], **callkwargs):
+    def gui(self, x, fft = False, tform = lambda z : z, persistent_signals = [],
+            **callkwargs):
         """ construct a gui for the parameter space evaluated over x
 
         Args:
@@ -137,6 +138,7 @@ class Parametric1D(object):
             persistent_signals:
                         a list of Signal1D objects that will be plotted in addtion
                         to self
+            tform:      a transformation to apply to the signal before plotting
             callkwargs: **kwargs for self.__call__
         """
         fig, (ax1, ax2) = plt.subplots(nrows = 2)
@@ -150,7 +152,8 @@ class Parametric1D(object):
             psigs.append((sigma, sigma.plot(style = self._gui_style)))
 
         # add the parametric model to the plot and construct the sliders
-        self.add_to_axes(ax1, x, self._gui_style, fft = fft, **callkwargs)
+        self.add_to_axes(ax1, x, self._gui_style, tform = tform, fft = fft,
+                         **callkwargs)
         sliders = self.construct_sliders(fig, ax2, x, fft = fft, **callkwargs)
 
         # create radio buttons to allow user to switch between plotting styles
@@ -163,11 +166,12 @@ class Parametric1D(object):
         def radio_update(key):
             self._gui_style = key
 
-            trace = self(x, **callkwargs)
+            axtop, tform, line = self._parametric_traces[0]
+
+            trace = tform(self(x, **callkwargs))
             if fft:
                 trace = trace.fft()
 
-            axtop, line = self._parametric_traces[0]
             line.set_ydata(plotting_styles[self._gui_style](trace.values))
 
             for sigma, line in psigs:
@@ -183,13 +187,17 @@ class Parametric1D(object):
         fig.tight_layout()
         plt.show()
 
-    def add_to_axes(self, ax, x, style, fft = False, **callkwargs):
+        return sliders, radio
+
+    def add_to_axes(self, ax, x, style, tform = lambda z : z, fft = False,
+                    **callkwargs):
         """ adds parameteric plot to axes 'ax' in 'style' and registers update rule
 
         Args:
             x:          an iterable to evaluate self over (i.e. the x axis)
             ax:         matplotlib Axis object to plot the data on
             style:      plotting style as defined in Signal1D
+            tform:      a transformation to apply to the signal before plotting
             fft:        if True, plot the fft of the signal
             callkwargs: **kwargs for self.__call__
         """
@@ -197,7 +205,7 @@ class Parametric1D(object):
         trace = self(x, **callkwargs)
         if fft:
             trace = trace.fft()
-        self._parametric_traces.append((ax, trace.plot(style = style)))
+        self._parametric_traces.append((ax, tform, tform(trace).plot(style = style)))
 
     def construct_sliders(self, fig, ax, x, fft = False, **callkwargs):
         """ add parameter sliders to ax. all axes to be update must be predefined
@@ -229,11 +237,11 @@ class Parametric1D(object):
             for p in self.v:
                 self.v[p] = sl[p].val
 
-            trace = self(x, **callkwargs)
-            if fft:
-                trace = trace.fft()
+            for ax2, tform, line in self._parametric_traces:
+                trace = tform(self(x, **callkwargs))
+                if fft:
+                    trace = trace.fft()
 
-            for ax2, line in self._parametric_traces:
                 line.set_ydata(plotting_styles[self._gui_style](trace.values))
                 ax2.relim()
                 ax2.autoscale_view()
