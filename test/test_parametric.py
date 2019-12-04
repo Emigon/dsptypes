@@ -18,6 +18,18 @@ def model():
     return {'expr': exp(tau*x) + alpha, 'params': parameters}
 
 @pytest.fixture
+def model2():
+    beta, gamma, x = symbols('beta gamma x')
+
+    # <symbol> : (lower limit, setpoint, upper limit)
+    parameters = {
+        'beta':   (1e2,   1e3,    1e4),
+        'gamma':  (1,   2,      3),
+    }
+
+    return {'expr': gamma*sin(beta*x), 'params': parameters}
+
+@pytest.fixture
 def sinusoid():
     fs = 20e3
     t = np.arange(0, 0.1, 1/fs)
@@ -92,6 +104,28 @@ def test_call(model):
     np.random.seed(42)
     y_noisy = pm(x, xunits = ureg('s'), snr = 30)
     assert y_np == pytest.approx(y_noisy.values, rel = 1e-3)
+
+def test_arithmetic_between_Pm1Ds(model, model2):
+    pm1, pm2 = Parametric1D(*model.values()), Parametric1D(*model2.values())
+
+    pm3 = pm1 + pm2
+    pm4 = pm1*pm2
+    pm5 = pm2/pm1
+
+    alpha, beta, gamma, tau = symbols('alpha beta gamma tau')
+
+    for pm in [pm3, pm4, pm5]:
+        for sym in [alpha, beta, gamma, tau]:
+            assert sym.name in pm.v
+            assert sym in pm.expr.free_symbols
+
+    # test overloading one of the parameters with arithmetic
+    model3 = {'expr': model2['expr'].subs(gamma, alpha),
+              'params': {'beta': (1e2, 1e3, 1e4), 'alpha': (1, 2, 3)}}
+
+    pm6 = pm1*Parametric1D(*model3.values())
+    assert pm6.v._l['alpha'] == 1
+    assert pm6.v._u['alpha'] == 3
 
 @pytest.mark.plot
 def test_gui(model, sinusoid):

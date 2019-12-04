@@ -103,6 +103,46 @@ class Parametric1D(object):
         self._parametric_traces = []
         self._gui_style = 'real'
 
+    # {{{ define arithmetic with multiple Parametric1D objects
+    def _combine_parameters(self, other):
+        params = {}
+        for k in self.v:
+            params[k] = (self.v._l[k], self.v[k], self.v._u[k])
+        for k in other.v:
+            if k in params:
+                # take the intersection of the lower and upper bounds
+                warnings.warn('taking intersection of common parameter bounds')
+                lower = max([params[k][0], other.v._l[k]])
+                upper = min([params[k][2], other.v._u[k]])
+                # force the setpoint to lie halfway between the parameter range
+                setpoint = (upper - lower)/2
+                params[k] = setpoint
+            params[k] = (other.v._l[k], other.v[k], other.v._u[k])
+
+        return params
+
+    def __add__(self, other):
+        return Parametric1D(self.expr + other.expr, self._combine_parameters(other))
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        return Parametric1D(self.expr - other.expr, self._combine_parameters(other))
+
+    def __rsub__(self, other):
+        return self.__sub__(other)
+
+    def __mul__(self, other):
+        return Parametric1D(self.expr * other.expr, self._combine_parameters(other))
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __truediv__(self, other):
+        return Parametric1D(self.expr / other.expr, self._combine_parameters(other))
+    # }}}
+
     def __call__(self, x, xunits = ureg(''), snr = np.inf, dist = np.random.normal):
         """ self(x) will give a Signal1D of the parametric model evaluate at x
         Args:
