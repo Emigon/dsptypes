@@ -116,7 +116,8 @@ class Parametric1D(object):
                         x, with noise added if snr is specified. noise is useful
                         for algorithm testing
         """
-        z = lambdify(self._free_var, self.expr.subs(self.v), "numpy")(x)
+        f = lambdify(self._free_var, self.expr.subs(self.v), "numpy")
+        z = f(np.array(x, dtype = complex))
 
         if  not(hasattr(z, '__iter__')):
             # we have unintentionally simplified self.expr to a constant
