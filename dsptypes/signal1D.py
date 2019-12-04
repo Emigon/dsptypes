@@ -159,7 +159,8 @@ class Signal1D(object):
         if xunits is not None:
             xaxis = xaxis.to(xunits)
 
-        line, = plt.plot(xaxis, plotting_styles[style](self.values))
+        line, = plt.plot(xaxis.magnitude, plotting_styles[style](self.values))
+        plt.xlabel(xaxis.units)
         plt.ylabel(style)
         return line
 
