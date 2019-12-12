@@ -125,10 +125,10 @@ class Signal1D(object):
         return self._z.index
 
     def real(self):
-        return Signal1D(self._z.real.values, xraw = self._x, xunits = self.xunits)
+        return Signal1D(self._z.real, xraw = self._x, xunits = self.xunits)
 
     def imag(self):
-        return Signal1D(self._z.imag.values, xraw = self._x, xunits = self.xunits)
+        return Signal1D(self._z.imag, xraw = self._x, xunits = self.xunits)
 
     def __eq__(self, other):
         result = deepcopy(self)
