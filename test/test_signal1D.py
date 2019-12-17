@@ -98,3 +98,13 @@ def test_arithmetic(sinusoid):
 
     # test equality operator
     assert np.all(6*y + 4 != y)
+
+def test_samples_above_below(sinusoid):
+    y = Signal1D(sinusoid)
+
+    y1 = y.samples_above(0.5, tform = 'real')
+    y2 = y.samples_below(0.5, tform = 'abs')
+
+    assert np.all(y1.real().values > 0.5)
+    assert np.all(y2.abs().values < 0.5)
+    assert len(y1.samples_below(0.5)) == 0

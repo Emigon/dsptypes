@@ -173,6 +173,14 @@ class Signal1D(object):
         plt.xlabel('Re')
         plt.ylabel('Im')
 
+    def samples_above(self, val, tform = 'real'):
+        idxs, = np.where(plotting_styles[tform](self._z) > val)
+        return Signal1D(self._z.values[idxs], xunits = self.xunits, xraw = self._x[idxs])
+
+    def samples_below(self, val, tform = 'real'):
+        idxs, = np.where(plotting_styles[tform](self._z) < val)
+        return Signal1D(self._z.values[idxs], xunits = self.xunits, xraw = self._x[idxs])
+
     @property
     def x(self):
         return self._x * self.xunits
