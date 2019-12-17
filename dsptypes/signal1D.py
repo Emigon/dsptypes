@@ -22,7 +22,7 @@ plotting_styles = \
     {
         'dB':   lambda z : 10*np.log10(np.abs(z)),
         'dBm':  lambda z : 10*np.log10(np.abs(z)) + 30,
-        'mag':  lambda z : np.abs(z),
+        'abs':  lambda z : np.abs(z),
         'rad':  lambda z : np.angle(z),
         'deg':  lambda z : np.deg2rad(np.angle(z)),
         'real': lambda z : np.real(z),
