@@ -156,8 +156,13 @@ class Parametric1D(object):
                         x, with noise added if snr is specified. noise is useful
                         for algorithm testing
         """
-        f = lambdify(self._free_var, self.expr.subs(self.v), "numpy")
-        z = f(np.array(x, dtype = complex))
+        try:
+            f = lambdify(self._free_var, self.expr.subs(self.v), "numpy")
+            z = f(np.array(x, dtype = complex))
+        except:
+            warnings.warn('failed to lambdify. evaluating slowly with subs instead')
+            f = self.expr.subs(self.v)
+            z = np.array([f.subs(self._free_var, xi) for xi in x], dtype = complex)
 
         if  not(hasattr(z, '__iter__')):
             # we have unintentionally simplified self.expr to a constant
