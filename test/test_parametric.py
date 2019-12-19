@@ -33,7 +33,7 @@ def model2():
 def sinusoid():
     fs = 20e3
     t = np.arange(0, 0.1, 1/fs)
-    return Signal1D(np.sin(2*np.pi*1e3*t), xunits = ureg('s'), xlims = (0, 1))
+    return Signal1D(np.sin(2*np.pi*1e3*t), xlims = (0*ureg('s'), 1*ureg('s')))
 
 def test_correct_init(model):
     try:
@@ -95,14 +95,14 @@ def test_parameter_modification(model):
 def test_call(model):
     pm = Parametric1D(*model.values())
 
-    x = np.linspace(0, 1, 100)
-    y_np = np.exp(model['params']['tau'][1]*x) + model['params']['alpha'][1]
+    x = np.linspace(0, 1, 100)*ureg('s')
+    y_np = np.exp(model['params']['tau'][1]*x.magnitude) + model['params']['alpha'][1]
 
-    y = pm(x, xunits = ureg('s'))
+    y = pm(x)
     assert y_np == pytest.approx(y.values)
 
     np.random.seed(42)
-    y_noisy = pm(x, xunits = ureg('s'), snr = 30)
+    y_noisy = pm(x, snr = 30)
     assert y_np == pytest.approx(y_noisy.values, rel = 1e-3)
 
 def test_arithmetic_between_Pm1Ds(model, model2):
@@ -130,9 +130,8 @@ def test_arithmetic_between_Pm1Ds(model, model2):
 @pytest.mark.plot
 def test_gui(model, sinusoid):
     pm = Parametric1D(*model.values())
-    pm.gui(np.linspace(0, 1, 100), xunits = ureg('s'),\
-            persistent_signals = [sinusoid])
-    pm.gui(np.linspace(0, 1, 100), fft = True, xunits = ureg('s'))
+    pm.gui(np.linspace(0, 1, 100)*ureg('s'), persistent_signals = [sinusoid])
+    pm.gui(np.linspace(0, 1, 100)*ureg('s'), fft = True)
 
 @pytest.mark.plot
 def test_sample(model):
@@ -145,5 +144,4 @@ def test_sample(model):
 def test_fit(model, sinusoid):
     pm = Parametric1D(*model.values())
     opt_result = pm.fitshgo(sinusoid)
-    pm.gui(sinusoid.x.magnitude, xunits = sinusoid.xunits,
-            persistent_signals = [sinusoid])
+    pm.gui(sinusoid.x, persistent_signals = [sinusoid])

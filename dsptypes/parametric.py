@@ -108,7 +108,7 @@ class Parametric1D(object):
                 warnings.warn('optimizer attempted to set parameter outside of bounds')
                 return float('inf')
 
-            return tform(self(signal1D.x.magnitude, signal1D.xunits)) @ signal1D
+            return tform(self(signal1D.x)) @ signal1D
 
         self._errf = errf
 
@@ -156,11 +156,10 @@ class Parametric1D(object):
         return Parametric1D(self.expr / other.expr, self._combine_parameters(other))
     # }}}
 
-    def __call__(self, x, xunits = ureg(''), snr = np.inf, dist = np.random.normal):
+    def __call__(self, x, snr = np.inf, dist = np.random.normal):
         """ self(x) will give a Signal1D of the parametric model evaluate at x
         Args:
-            x:      the points to evaluate expr over
-            xunits: the units to apply to x
+            x:      the points to evaluate expr over. can be a pint array
             snr:    signal to noise ratio in dB
             dist:   noise distribution
 
@@ -171,7 +170,10 @@ class Parametric1D(object):
         """
         try:
             f = lambdify(self._free_var, self.expr.subs(self.v), "numpy")
-            z = f(np.array(x, dtype = complex))
+            if hasattr(x, 'units'):
+                z = f(np.array(x.magnitude, dtype = complex))
+            else:
+                z = f(np.array(x, dtype = complex))
         except:
             warnings.warn('failed to lambdify. evaluating slowly with subs instead')
             f = self.expr.subs(self.v)
@@ -186,7 +188,7 @@ class Parametric1D(object):
             noise *= 10**(-snr/10) * np.std(z)**2 / np.std(noise)**2
             z += noise
 
-        return Signal1D(z, xunits = xunits, xraw = x)
+        return Signal1D(z, xraw = x)
 
     def gui(self, x, fft = False, tform = lambda z : z, persistent_signals = [],
             **callkwargs):

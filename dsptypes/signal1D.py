@@ -39,10 +39,30 @@ def return_copy(name):
         return cp
     return wrapper
 
+def pint_safe_linspace(lo, hi, N, endpoint = True):
+    if hasattr(lo, 'units') and not(hasattr(hi, 'units')):
+        raise TypeError('lo and hi must both be numeric or pint types')
+    if hasattr(hi, 'units') and not(hasattr(hi, 'units')):
+        raise TypeError('lo and hi must both be numeric or pint types')
+
+    if hasattr(lo, 'units'):
+        base_units = lo.to_base_units().units
+        lo_base = lo.to_base_units().magnitude
+        hi_base = hi.to_base_units().magnitude
+        arr = np.linspace(lo_base, hi_base, N, endpoint = endpoint)*base_units
+        return arr.to(min([lo.units, hi.units]))
+    else:
+        return np.linspace(lo, hi, N, endpoint = endpoint)
+
+def pint_safe_diff(arr):
+    if hasattr(arr, 'units'):
+        return np.diff(arr.magnitude) * arr.units
+    else:
+        return np.diff(arr)
+
 class Signal1D(object):
     def __init__(self,
                  z,
-                 xunits = ureg('samples'),
                  xlims = (None, None),
                  xcentspan = (None, None),
                  xraw = None):
@@ -50,31 +70,27 @@ class Signal1D(object):
 
         Args:
             z:          the samples of the signal
-            xunits:     a pint unit for the x axis
             xlims:      (optional) specify the lower and upper bounds for the x
                         axis. this overrides xcentspan and xraw. e.g. (0, 1)
-                        will set the xaxis to be linspace(0, 1, len(z))
+                        will set the xaxis to be linspace(0, 1, len(z)). pint
+                        types for boundaries are compatible
             xcentspan:  (optional) specify the centre and span of the xaxis.
                         useful for resonace data. overrides xraw. e.g. (5, 10)
                         will centre x at 5 and will span 10 units. the xlims eqv.
-                        would be (0, 10)
+                        would be (0, 10). pint types for boundaries are compatible
             xraw:       raw values for the x axis. use this if you want a
-                        non-linearly spaced x axis. must have the same length as z
+                        non-linearly spaced x axis. must have the same length as z.
+                        pint arrays are also compatible
         """
-
-        if not(hasattr(xunits, 'units')):
-            raise TypeError('xunits must be a pint datatype')
-        self._xunits = xunits
-
         if (xcentspan != (None, None)) and (xlims != (None, None)):
             raise RuntimeError("Cannot specify both xcentspan and xlims")
         elif xcentspan != (None, None):
             cent, span = xcentspan
-            self._x = np.linspace(cent- span/2, cent + span/2, len(z))
+            self._x = pint_safe_linspace(cent - span/2, cent + span/2, len(z))
         elif xlims != (None, None):
             if xlims[0] > xlims[1]:
                 raise ValueError("xlims must have format [a, b] with b > a")
-            self._x = np.linspace(xlims[0], xlims[1], len(z), endpoint = False)
+            self._x = pint_safe_linspace(xlims[0], xlims[1], len(z), endpoint = False)
         elif xraw is not None:
             if not(hasattr(xraw, '__iter__')):
                 raise TypeError('xraw must be iterable')
@@ -84,7 +100,10 @@ class Signal1D(object):
         else:
             self._x = np.arange(len(z))
 
-        self._z = pd.Series(np.complex128(z), index = self.x.magnitude)
+        if hasattr(self.x, 'units'):
+            self._z = pd.Series(np.complex128(z), index = self.x.magnitude)
+        else:
+            self._z = pd.Series(np.complex128(z), index = self.x)
 
         # {{{ partially inherit from pandas Series
         setattr(Signal1D, '__len__', lambda obj: getattr(obj._z, '__len__')())
@@ -93,12 +112,8 @@ class Signal1D(object):
         setattr(Signal1D, 'min', lambda obj: getattr(obj._z, 'min')())
         setattr(Signal1D, 'max', lambda obj: getattr(obj._z, 'max')())
 
-        setattr(Signal1D, 'idxmin',
-                lambda obj: obj.xunits.units * getattr(obj._z, 'idxmin')())
-        setattr(Signal1D, 'idxmax',
-                lambda obj: obj.xunits.units * getattr(obj._z, 'idxmax')())
-
-        setattr(Signal1D, 'abs', lambda obj : return_copy('abs')(obj))
+        setattr(Signal1D, 'idxmin', lambda obj: obj.x.units * getattr(obj._z, 'idxmin')())
+        setattr(Signal1D, 'idxmax', lambda obj: obj.x.units * getattr(obj._z, 'idxmax')())
 
         setattr(Signal1D, '__add__', lambda obj, oth: return_copy('__add__')(obj, oth))
         setattr(Signal1D, '__radd__', lambda obj, oth: return_copy('__add__')(obj, oth))
@@ -124,11 +139,17 @@ class Signal1D(object):
     def index(self):
         return self._z.index
 
+    def abs(self):
+        return Signal1D(np.abs(self._z), xraw = self.x)
+
+    def angle(self):
+        return Signal1D(np.angle(self._z), xraw = self.x)
+
     def real(self):
-        return Signal1D(self._z.real, xraw = self._x, xunits = self.xunits)
+        return Signal1D(self._z.real, xraw = self.x)
 
     def imag(self):
-        return Signal1D(self._z.imag, xraw = self._x, xunits = self.xunits)
+        return Signal1D(self._z.imag, xraw = self.x)
 
     def __eq__(self, other):
         result = deepcopy(self)
@@ -149,7 +170,7 @@ class Signal1D(object):
         """ returns a Signal1D of the fft of self """
         z = np.fft.fft(self.values)/np.sqrt(len(self))
         f = np.fft.fftfreq(len(z))
-        return Signal1D(z[np.argsort(f)], xunits = self.fs, xlims = (-.5, .5))
+        return Signal1D(z[np.argsort(f)], xlims = (-.5*self.fs, .5*self.fs))
 
     def plot(self, style = 'real', xunits = None):
         """ adds a plot of self in specified style to the current axis
@@ -162,8 +183,7 @@ class Signal1D(object):
         if xunits is not None:
             xaxis = xaxis.to(xunits)
 
-        line, = plt.plot(xaxis.magnitude, plotting_styles[style](self.values))
-        plt.xlabel(xaxis.units)
+        line, = plt.plot(xaxis, plotting_styles[style](self.values))
         plt.ylabel(style)
         return line
 
@@ -175,32 +195,22 @@ class Signal1D(object):
 
     def samples_above(self, val, tform = 'real'):
         idxs, = np.where(plotting_styles[tform](self._z) > val)
-        return Signal1D(self._z.values[idxs], xunits = self.xunits, xraw = self._x[idxs])
+        return Signal1D(self._z.values[idxs], xraw = self.x[idxs])
 
     def samples_below(self, val, tform = 'real'):
         idxs, = np.where(plotting_styles[tform](self._z) < val)
-        return Signal1D(self._z.values[idxs], xunits = self.xunits, xraw = self._x[idxs])
+        return Signal1D(self._z.values[idxs], xraw = self.x[idxs])
 
     @property
     def x(self):
-        return self._x * self.xunits
-
-    @property
-    def xunits(self):
-        return self._xunits
-
-    @xunits.setter
-    def xunits(self, val):
-        if not(hasattr(val, 'units')):
-            raise TypeError('xunits must be a pint datatype')
-        self._xunits = val
+        return self._x
 
     def copy(self):
         return deepcopy(self)
 
     @property
     def fs(self):
-        return 1.0/min(np.diff(self._x)) * 1/self.xunits
+        return 1.0/min(pint_safe_diff(self.x))
 
     @property
     def pwr(self):
@@ -211,5 +221,4 @@ class Signal1D(object):
         return np.linalg.norm(self.values - other.values)**2
 
     def normalise(self):
-        return Signal1D(self._z.values/np.linalg.norm(self.values),
-                            xraw = self._x, xunits = self.xunits)
+        return Signal1D(self._z.values/np.linalg.norm(self.values), xraw = self.x)
