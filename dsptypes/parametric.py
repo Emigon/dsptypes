@@ -99,6 +99,19 @@ class Parametric1D(object):
 
         self.v = ParameterDict(params)
 
+        # define an error function for fitshgo that may be overridden
+        def errf(v, self, signal1D, tform):
+            try:
+                for i, k in enumerate(self.v):
+                    self.v[k] = v[i]
+            except:
+                warnings.warn('optimizer attempted to set parameter outside of bounds')
+                return float('inf')
+
+            return tform(self(signal1D.x.magnitude, signal1D.xunits)) @ signal1D
+
+        self._errf = errf
+
         # gui variables
         self._parametric_traces = []
         self._gui_style = 'real'
@@ -309,18 +322,12 @@ class Parametric1D(object):
 
     def fitshgo(self, signal1D, n = 200, iters = 5, tform = lambda z : z):
         """ fit self to signal1D using shgo and normalised least sqaures metric """
-        def errf(v):
-            try:
-                for i, k in enumerate(self.v):
-                    self.v[k] = v[i]
-            except:
-                warnings.warn('optimizer attempted to set parameter outside of bounds')
-                return float('inf')
-
-            return tform(self(signal1D.x.magnitude, signal1D.xunits)) @ signal1D
-
-        result = shgo(errf, bounds = [(self.v._l[k], self.v._u[k]) for k in self.v],
-                      n = n, iters = iters, sampling_method = 'sobol')
+        result = shgo(self._errf,
+                      args = (self, signal1D, tform),
+                      bounds = [(self.v._l[k], self.v._u[k]) for k in self.v],
+                      n = n,
+                      iters = iters,
+                      sampling_method = 'sobol')
 
         # the last iteration isn't necessarily the global minimum
         for i, k in enumerate(self.v):
