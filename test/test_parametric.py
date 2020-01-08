@@ -129,6 +129,16 @@ def test_arithmetic_between_Pm1Ds(model, model2):
     assert pm6.v._l['alpha'] == 1
     assert pm6.v._u['alpha'] == 3
 
+def test_fishgo(model, sinusoid):
+    pm = Parametric1D(*model.values())
+    table = pm.fitshgo(sinusoid, n = 5, iters = 1) # for fast evaluation
+
+    assert type(table) == pd.Series
+    for idx in table.index:
+        assert idx in ['parameters', 'fitted', 'opt_result']
+    assert type(table.parameters) == ParameterDict
+    assert type(table.fitted) == Signal1D
+
 @pytest.mark.plot
 def test_gui(model, sinusoid):
     pm = Parametric1D(*model.values())

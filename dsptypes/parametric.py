@@ -334,4 +334,8 @@ class Parametric1D(object):
         for i, k in enumerate(self.v):
             self.v[k] = result.x[i]
 
-        return result
+        return pd.Series({
+                'parameters':   deepcopy(self.v),
+                'fitted':       signal1D,
+                'opt_result':   result,
+            })
