@@ -11,6 +11,7 @@ setup(name='dsptypes',
           'pint>=0.9',
           'sympy>=1.4',
           'numpy>=1.16.3',
+          'scipy>=1.3.0',
           'pandas>=0.24.2',
           'matplotlib>=3.0.3',
         ])
