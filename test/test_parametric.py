@@ -1,11 +1,11 @@
 import pytest
+import matplotlib.pyplot as plt
 
-from sympy import *
-from sympy.abc import x, y, tau, alpha
+import sympy as sp
 
 from dsptypes import *
 
-import matplotlib.pyplot as plt
+x, y, tau, alpha = sp.symbols('x y tau alpha')
 
 @pytest.fixture
 def model():
@@ -15,11 +15,11 @@ def model():
         'alpha':  (-10,   0,      10),
     }
 
-    return {'expr': exp(tau*x) + alpha, 'params': parameters}
+    return {'expr': sp.exp(tau*x) + alpha, 'params': parameters}
 
 @pytest.fixture
 def model2():
-    beta, gamma, x = symbols('beta gamma x')
+    beta, gamma, x = sp.symbols('beta gamma x')
 
     # <symbol> : (lower limit, setpoint, upper limit)
     parameters = {
@@ -27,7 +27,7 @@ def model2():
         'gamma':  (1,   2,      3),
     }
 
-    return {'expr': gamma*sin(beta*x), 'params': parameters}
+    return {'expr': gamma*sp.sin(beta*x), 'params': parameters}
 
 @pytest.fixture
 def sinusoid():
@@ -112,7 +112,7 @@ def test_arithmetic_between_Pm1Ds(model, model2):
     pm4 = pm1*pm2
     pm5 = pm2/pm1
 
-    alpha, beta, gamma, tau = symbols('alpha beta gamma tau')
+    alpha, beta, gamma, tau = sp.symbols('alpha beta gamma tau')
 
     for pm in [pm3, pm4, pm5]:
         for sym in [alpha, beta, gamma, tau]:
