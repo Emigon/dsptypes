@@ -20,13 +20,13 @@ from dsptypes import *
 
 plotting_styles = \
     {
-        'dB':   lambda z: 10*np.log10(np.abs(z.to_numpy())),
-        'dBm':  lambda z: 10*np.log10(np.abs(z.to_numpy())) + 30,
-        'abs':  lambda z: np.abs(z.to_numpy()),
-        'rad':  lambda z: np.angle(z.to_numpy()),
-        'deg':  lambda z: np.deg2rad(np.angle(z.to_numpy())),
-        'real': lambda z: np.real(z.to_numpy()),
-        'imag': lambda z: np.imag(z.to_numpy()),
+        'dB':   lambda z: 10*np.log10(np.abs(z.values)),
+        'dBm':  lambda z: 10*np.log10(np.abs(z.values)) + 30,
+        'abs':  lambda z: np.abs(z.values),
+        'rad':  lambda z: np.angle(z.values),
+        'deg':  lambda z: np.deg2rad(np.angle(z.values)),
+        'real': lambda z: np.real(z.values),
+        'imag': lambda z: np.imag(z.values),
     }
 
 def return_copy(name):
@@ -183,7 +183,7 @@ class Signal1D(object):
         if xunits is not None:
             xaxis = xaxis.to(xunits)
 
-        line, = plt.plot(xaxis, plotting_styles[style](self._z))
+        line, = plt.plot(xaxis, plotting_styles[style](self))
         plt.ylabel(style)
         return line
 
@@ -194,11 +194,11 @@ class Signal1D(object):
         plt.ylabel('Im')
 
     def samples_above(self, val, tform = 'real'):
-        idxs, = np.where(plotting_styles[tform](self._z) > val)
+        idxs, = np.where(plotting_styles[tform](self) > val)
         return Signal1D(self._z.values[idxs], xraw = self.x[idxs])
 
     def samples_below(self, val, tform = 'real'):
-        idxs, = np.where(plotting_styles[tform](self._z) < val)
+        idxs, = np.where(plotting_styles[tform](self) < val)
         return Signal1D(self._z.values[idxs], xraw = self.x[idxs])
 
     @property

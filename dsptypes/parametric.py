@@ -233,10 +233,10 @@ class Parametric1D(object):
             if fft:
                 trace = trace.fft()
 
-            line.set_ydata(plotting_styles[self._gui_style](trace.values))
+            line.set_ydata(plotting_styles[self._gui_style](trace))
 
             for sigma, line in psigs:
-                line.set_ydata(plotting_styles[self._gui_style](sigma.values))
+                line.set_ydata(plotting_styles[self._gui_style](sigma))
 
             axtop.relim()
             axtop.autoscale_view()
@@ -303,7 +303,7 @@ class Parametric1D(object):
                 if fft:
                     trace = trace.fft()
 
-                line.set_ydata(plotting_styles[self._gui_style](trace.values))
+                line.set_ydata(plotting_styles[self._gui_style](trace))
                 ax2.relim()
                 ax2.autoscale_view()
 
