@@ -314,13 +314,6 @@ class Parametric1D(object):
 
         return sl
 
-    def sample(self, N, x, **callkwargs):
-        """ sample self(x) for N uniformly sampled points in the parameter space """
-        for _ in range(N):
-            for p in self.v:
-                self.v[p] = np.random.uniform(low = self.v._l[p], high = self.v._u[p])
-            yield self(x, **callkwargs)
-
     def fitshgo(self, signal1D, n = 200, iters = 5, tform = lambda z : z):
         """ fit self to signal1D using shgo and normalised least sqaures metric """
         result = shgo(self._errf,

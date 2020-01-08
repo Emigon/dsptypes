@@ -146,13 +146,6 @@ def test_gui(model, sinusoid):
     pm.gui(np.linspace(0, 1, 100)*ureg('s'), fft = True)
 
 @pytest.mark.plot
-def test_sample(model):
-    pm = Parametric1D(*model.values())
-    for sigma in pm.sample(10, np.linspace(0, 1, 100), snr = 20):
-        sigma.plot()
-    plt.show()
-
-@pytest.mark.plot
 def test_fit(model, sinusoid):
     pm = Parametric1D(*model.values())
     opt_result = pm.fitshgo(sinusoid, n = 5, iters = 1) # for fast evaluation
