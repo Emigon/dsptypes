@@ -189,7 +189,7 @@ class Signal1D(object):
 
     def plotz(self):
         """ scatter self on the complex plane of the current axis object """
-        plt.scatter(self._z.real, self._z.imag)
+        plt.scatter(np.real(self._z.to_numpy()), np.imag(self._z.to_numpy()))
         plt.xlabel('Re')
         plt.ylabel('Im')
 
