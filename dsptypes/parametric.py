@@ -184,7 +184,7 @@ class Parametric1D(object):
             z = np.array(len(x)*[z])
 
         if snr < np.inf:
-            noise = dist(size = len(z))
+            noise = dist(size = len(z)) + 1j*dist(size = len(z))
             noise *= 10**(-snr/10) * np.std(z)**2 / np.std(noise)**2
             z += noise
 
