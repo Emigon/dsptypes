@@ -73,7 +73,7 @@ def test_plot(sinusoid):
     y = Signal1D(sinusoid, xlims = (0*ureg('s'), 1*ureg('s')))
     y.plot()
     plt.show()
-    y.plot(style = 'dBm')
+    y.plot(style = 'abs')
     plt.show()
 
 def test_copy(sinusoid):
