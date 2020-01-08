@@ -123,7 +123,9 @@ def test_arithmetic_between_Pm1Ds(model, model2):
     model3 = {'expr': model2['expr'].subs(gamma, alpha),
               'params': {'beta': (1e2, 1e3, 1e4), 'alpha': (1, 2, 3)}}
 
-    pm6 = pm1*Parametric1D(*model3.values())
+    with pytest.warns(UserWarning):
+        pm6 = pm1*Parametric1D(*model3.values())
+
     assert pm6.v._l['alpha'] == 1
     assert pm6.v._u['alpha'] == 3
 
