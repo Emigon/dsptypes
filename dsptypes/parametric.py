@@ -17,7 +17,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.widgets import Slider, RadioButtons
 
 import sympy
-from sympy import *
 
 from scipy.optimize import shgo
 
@@ -169,7 +168,7 @@ class Parametric1D(object):
                         for algorithm testing
         """
         try:
-            f = lambdify(self._free_var, self.expr.subs(self.v), "numpy")
+            f = sympy.lambdify(self._free_var, self.expr.subs(self.v), "numpy")
             if hasattr(x, 'units'):
                 z = f(np.array(x.magnitude, dtype = complex))
             else:
