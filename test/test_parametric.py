@@ -143,5 +143,5 @@ def test_sample(model):
 @pytest.mark.plot
 def test_fit(model, sinusoid):
     pm = Parametric1D(*model.values())
-    opt_result = pm.fitshgo(sinusoid)
+    opt_result = pm.fitshgo(sinusoid, n = 5, iters = 1) # for fast evaluation
     pm.gui(sinusoid.x, persistent_signals = [sinusoid])
