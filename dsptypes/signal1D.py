@@ -20,13 +20,13 @@ from dsptypes import *
 
 plotting_styles = \
     {
-        'dB':   lambda z : 10*np.log10(np.abs(z)),
-        'dBm':  lambda z : 10*np.log10(np.abs(z)) + 30,
-        'abs':  lambda z : np.abs(z),
-        'rad':  lambda z : np.angle(z),
-        'deg':  lambda z : np.deg2rad(np.angle(z)),
-        'real': lambda z : np.real(z),
-        'imag': lambda z : np.imag(z),
+        'dB':   lambda z: 10*np.log10(np.abs(z.to_numpy())),
+        'dBm':  lambda z: 10*np.log10(np.abs(z.to_numpy())) + 30,
+        'abs':  lambda z: np.abs(z.to_numpy()),
+        'rad':  lambda z: np.angle(z.to_numpy()),
+        'deg':  lambda z: np.deg2rad(np.angle(z.to_numpy())),
+        'real': lambda z: np.real(z.to_numpy()),
+        'imag': lambda z: np.imag(z.to_numpy()),
     }
 
 def return_copy(name):
@@ -140,16 +140,16 @@ class Signal1D(object):
         return self._z.index
 
     def abs(self):
-        return Signal1D(np.abs(self._z), xraw = self.x)
+        return Signal1D(np.abs(self._z.to_numpy()), xraw = self.x)
 
     def angle(self):
-        return Signal1D(np.angle(self._z), xraw = self.x)
+        return Signal1D(np.angle(self._z.to_numpy()), xraw = self.x)
 
     def real(self):
-        return Signal1D(self._z.real, xraw = self.x)
+        return Signal1D(np.real(self._z.to_numpy()), xraw = self.x)
 
     def imag(self):
-        return Signal1D(self._z.imag, xraw = self.x)
+        return Signal1D(np.imag(self._z.to_numpy()), xraw = self.x)
 
     def __eq__(self, other):
         result = deepcopy(self)
