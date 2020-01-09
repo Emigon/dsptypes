@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 from copy import deepcopy
 
-from dsptypes import *
+from fitkit import *
 
 plotting_styles = \
     {

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 import sympy as sp
 
-from dsptypes import *
+from fitkit import *
 
 x, y, tau, alpha = sp.symbols('x y tau alpha')
 

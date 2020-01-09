@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
-setup(name='dsptypes',
+setup(name='fitkit',
       version='0.0.1',
-      description='Python classes for terse signal processing algorithm development and testing',
-      url='https://github.com/Emigon/dsptypes',
+      description='Python methods and objects for fitting functions to data',
+      url='https://github.com/Emigon/fitkit',
       author='Daniel Parker',
       author_email='danielparker@live.com.au',
       packages=find_packages(),

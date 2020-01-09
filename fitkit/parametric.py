@@ -12,18 +12,17 @@ parameter bounds
 import warnings
 import pandas as pd
 import numpy as np
+import sympy
+import scipy.optimize as spopt
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.widgets import Slider, RadioButtons
 
-import sympy
-
-import scipy.optimize as spopt
+from copy import deepcopy
 
 from collections.abc import MutableMapping
 
-from dsptypes import *
-from .signal1D import *
+from fitkit import Signal1D
 
 class ParameterDict(MutableMapping):
     def __init__(self, params):

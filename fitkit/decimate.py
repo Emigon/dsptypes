@@ -10,7 +10,7 @@ number of subsampled points to the original length of the data
 """
 
 import numpy as np
-from dsptypes import Signal1D
+from fitkit import Signal1D
 
 def decimate_by_derivative(sig1d, N, tform = lambda z : np.abs(z)):
     """ [EXPERIMENTAL] draws N random samples from sig1d about points of change

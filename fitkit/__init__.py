@@ -14,5 +14,5 @@ with warnings.catch_warnings():
   warnings.simplefilter("ignore")
   Q_([])
 
-from .parametric import *
 from .signal1D import *
+from .parametric import *

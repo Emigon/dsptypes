@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dsptypes import Signal1D, ureg
+from fitkit import Signal1D, ureg
 
 @pytest.fixture
 def sinusoid():

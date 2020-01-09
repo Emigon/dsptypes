@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 import sympy as sp
 
-from dsptypes.datasheet import *
-from dsptypes import Parametric1D
+from fitkit.datasheet import *
+from fitkit import Parametric1D
 
 x, y, tau, alpha = sp.symbols('x y tau alpha')
 
