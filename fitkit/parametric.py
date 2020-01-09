@@ -229,7 +229,7 @@ class Parametric1D(object):
             result = global_methods[method](errf, args = args, bounds = b, **opts)
         else:
             x0 = [self.v[k] for k in self.v]
-            result = spopt.minimize(errf, x0, args = args, method = method)
+            result = spopt.minimize(errf, x0, args = args, method = method, **opts)
 
         # the last iteration isn't necessarily the global minimum
         for i, k in enumerate(self.v):
