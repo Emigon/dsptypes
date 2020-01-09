@@ -185,6 +185,7 @@ class Signal1D(object):
 
         line, = plt.plot(xaxis, plotting_styles[style](self))
         plt.ylabel(style)
+        plt.tight_layout()
         return line
 
     def plotz(self):
@@ -192,6 +193,7 @@ class Signal1D(object):
         plt.scatter(np.real(self._z.to_numpy()), np.imag(self._z.to_numpy()))
         plt.xlabel('Re')
         plt.ylabel('Im')
+        plt.tight_layout()
 
     def samples_above(self, val, tform = 'real'):
         idxs, = np.where(plotting_styles[tform](self) > val)

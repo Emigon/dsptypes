@@ -79,5 +79,6 @@ def snr_boxplot(pm1d, x, metric, snrs, N, **callkwargs):
     plt.ylabel('Metric')
     plt.ylim(-1e-2*dataset.metric.max())
     plt.xlim(np.min(snrs) - .6*w, np.max(snrs) + .6*w)
+    plt.tight_layout()
 
     return dataset
