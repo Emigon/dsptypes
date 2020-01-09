@@ -19,7 +19,7 @@ def model():
     return Parametric1D(sp.exp(tau*x) + alpha, parameters)
 
 def test_apply_metric_to(model):
-    def lsq_metric(sig1d):
+    def lsq_metric(sig1d, mdata):
         shgo_opts = {'n': 1, 'iters': 1, 'sampling_method': 'sobol'}
         metadata = model.fit(sig1d, 'shgo', opts = shgo_opts)
         return model(sig1d.x)@sig1d, metadata
@@ -32,7 +32,7 @@ def test_apply_metric_to(model):
         assert col in ['metric', 'parameters', 'fitted', 'opt_result']
 
 def test_snr_sweep(model):
-    def lsq_metric(sig1d):
+    def lsq_metric(sig1d, mdata):
         shgo_opts = {'n': 1, 'iters': 1, 'sampling_method': 'sobol'}
         metadata = model.fit(sig1d, 'shgo', opts = shgo_opts)
         return model(sig1d.x)@sig1d, metadata
@@ -49,13 +49,13 @@ def test_snr_sweep(model):
 
 @pytest.mark.plot
 def test_sample(model):
-    for sigma in sample(model, 10, np.linspace(0, 1, 100), snr = 20):
+    for sigma, mdata in sample(model, 10, np.linspace(0, 1, 100), snr = 20):
         sigma.plot()
     plt.show()
 
 @pytest.mark.plot
 def test_snr_boxplot(model):
-    def dummy_metric(sig1d):
+    def dummy_metric(sig1d, mdata):
         return np.abs(np.random.normal()), pd.Series({'fitted': sig1d})
 
     x = np.linspace(0, 1, 24)

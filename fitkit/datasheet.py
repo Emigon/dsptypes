@@ -26,18 +26,20 @@ def apply_metric_to(sampler, metric):
     """ evalute metric on samples drawn from sampler
 
     Args:
-        sampler:        a python generator that yields Signal1Ds
-        metric:         a function that accepts a Signal1D and returns a
-                        (metric_value, metadata) pair, whereby metric_value is some
-                        positive number and the metadata object is a consistent
-                        pd.Series object containing additional information to log
+        sampler:        a python generator that yields Signal1Ds and any associated
+                        metadata
+        metric:         a function that accepts a (Signal1D, metadata) pair and
+                        returns a (metric_value, metadata) pair, whereby
+                        metric_value is some positive number and the metadata object
+                        is a consistent pd.Series object containing additional
+                        information to log
     Returns:
         table:          pd.DataFrame with columns containing the metadata labels +
                         the metric_value for each sample. indices are integers
     """
     rows = []
-    for sig1d in sampler:
-        val, metadata = metric(sig1d)
+    for sig1d, sig1d_mdata in sampler:
+        val, metadata = metric(sig1d, sig1d_mdata)
         metadata['metric'] = val
         rows.append(metadata)
 
