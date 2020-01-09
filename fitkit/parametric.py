@@ -234,7 +234,15 @@ class Parametric1D(object):
 
         # the last iteration isn't necessarily the global minimum
         for i, k in enumerate(self.v):
-            self.v[k] = result.x[i]
+            if result.x[i] < self.v._l[k]:
+                self.v[k] = result.v._l[k]
+            elif result.x[i] > self.v._u[k]:
+                self.v[k] = result.v._u[k]
+            elif np.isnan(result.x[i]):
+                raise RuntimeError('Optimization failed to explore inside the\
+                                    parameter space')
+            else:
+                self.v[k] = result.x[i]
 
         return pd.Series({
                 'parameters':   deepcopy(self.v),
