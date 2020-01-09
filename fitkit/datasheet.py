@@ -10,12 +10,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from copy import deepcopy
+
 def sample(pm1d, N, x, **callkwargs):
     """ sample pm1d(x) for N uniformly sampled points in the parameter space """
+    v_init = deepcopy(pm1d.v)
     for _ in range(N):
         for p in pm1d.v:
-            pm1d.v[p] = np.random.uniform(low = pm1d.v._l[p], high = pm1d.v._u[p])
-        yield pm1d(x, **callkwargs)
+            pm1d.v[p] = np.random.uniform(pm1d.v._l[p], pm1d.v._u[p])
+        samples, mdata = pm1d(x, **callkwargs), deepcopy(pm1d.v)
+        pm1d.v = v_init # reset the model back to its original state
+        yield samples, mdata
 
 def apply_metric_to(sampler, metric):
     """ evalute metric on samples drawn from sampler
