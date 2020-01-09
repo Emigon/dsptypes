@@ -23,6 +23,7 @@ from copy import deepcopy
 from collections.abc import MutableMapping
 
 from fitkit import Signal1D
+from .signal1D import *
 
 class ParameterDict(MutableMapping):
     def __init__(self, params):
