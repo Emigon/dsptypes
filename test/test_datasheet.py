@@ -20,7 +20,8 @@ def model():
 
 def test_apply_metric_to(model):
     def lsq_metric(sig1d):
-        metadata = model.fitshgo(sig1d, n = 1, iters = 1)
+        shgo_opts = {'n': 1, 'iters': 1, 'sampling_method': 'sobol'}
+        metadata = model.fit(sig1d, 'shgo', opts = shgo_opts)
         return model(sig1d.x)@sig1d, metadata
 
     x = np.linspace(0, 1, 100)
@@ -32,7 +33,8 @@ def test_apply_metric_to(model):
 
 def test_snr_sweep(model):
     def lsq_metric(sig1d):
-        metadata = model.fitshgo(sig1d, n = 1, iters = 1)
+        shgo_opts = {'n': 1, 'iters': 1, 'sampling_method': 'sobol'}
+        metadata = model.fit(sig1d, 'shgo', opts = shgo_opts)
         return model(sig1d.x)@sig1d, metadata
 
     x = np.linspace(0, 1, 100)

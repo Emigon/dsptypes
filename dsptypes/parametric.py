@@ -18,7 +18,7 @@ from matplotlib.widgets import Slider, RadioButtons
 
 import sympy
 
-from scipy.optimize import shgo
+import scipy.optimize as spopt
 
 from collections.abc import MutableMapping
 
@@ -54,6 +54,16 @@ class ParameterDict(MutableMapping):
 
     def __keytransform__(self, key):
         return key
+
+def default_errf(v, self, signal1D, tform):
+    try:
+        for i, k in enumerate(self.v):
+            self.v[k] = v[i]
+    except:
+        warnings.warn('optimizer attempted to set parameter outside of bounds')
+        return float('inf')
+
+    return tform(self(signal1D.x)) @ signal1D
 
 class Parametric1D(object):
     def __init__(self, expr, params):
@@ -97,19 +107,6 @@ class Parametric1D(object):
                 raise ValueError(f'params item {params[k]} must be ascending')
 
         self.v = ParameterDict(params)
-
-        # define an error function for fitshgo that may be overridden
-        def errf(v, self, signal1D, tform):
-            try:
-                for i, k in enumerate(self.v):
-                    self.v[k] = v[i]
-            except:
-                warnings.warn('optimizer attempted to set parameter outside of bounds')
-                return float('inf')
-
-            return tform(self(signal1D.x)) @ signal1D
-
-        self._errf = errf
 
         # gui variables
         self._parametric_traces = []
@@ -188,6 +185,62 @@ class Parametric1D(object):
             z += noise
 
         return Signal1D(z, xraw = x)
+
+    def fit(self,
+            sig1d,
+            method = 'Nelder-Mead',
+            errf = default_errf,
+            opts = {},
+            tform = lambda z : z):
+        """ fit self to signal1D using scipy.minimize with self._errf
+
+        Args:
+            sig1d:      the input signal to fit.
+            method:     see scipy.minimize for local optimisation methods.
+                        otherwise global methods 'differential_evolution', 'shgo'
+                        and 'dual_annealing' are supported.
+            errf:       an error function that accepts the (v, self, sig1d, tform)
+                        as arguments, where v is the ParameterDict associated with
+                        self. as in scipy this functions return type must be a
+                        real number.
+            opts:       the keyword arguments to pass to scipy.minimize or the
+                        'dual_annealing', 'shgo' or 'differential_evolution' global
+                        optimizers.
+            tform:      a transformation to apply to self(sig1d.x) before evaluating
+                        the cost function. in some cases the sig1d we want to fit
+                        to is a transformed instance of our applied model (e.g.
+                        it has additional constant components mixed in).
+        Returns:
+            table:      a pandas.Series object containg the ParameterDict associated
+                        with the optima, a copy of the signal that was fitted and
+                        the optimisation result metadata. some of this information
+                        is superfluous but makes for constructing a completely
+                        reproducable analysis of a large set of Signal1Ds easy.
+        """
+        global_methods = {
+            'differential_evolution':   spopt.differential_evolution,
+            'shgo':                     spopt.shgo,
+            'dual_annealing':           spopt.dual_annealing,
+        }
+
+        args = (self, sig1d, tform)
+
+        if method in global_methods:
+            b = [(self.v._l[k], self.v._u[k]) for k in self.v]
+            result = global_methods[method](errf, args = args, bounds = b, **opts)
+        else:
+            x0 = [self.v[k] for k in self.v]
+            result = spopt.minimize(errf, x0, args = args, method = method)
+
+        # the last iteration isn't necessarily the global minimum
+        for i, k in enumerate(self.v):
+            self.v[k] = result.x[i]
+
+        return pd.Series({
+                'parameters':   deepcopy(self.v),
+                'fitted':       sig1d,
+                'opt_result':   result,
+            })
 
     def gui(self, x, fft = False, tform = lambda z : z, persistent_signals = [],
             **callkwargs):
@@ -313,22 +366,3 @@ class Parametric1D(object):
             slider.on_changed(update)
 
         return sl
-
-    def fitshgo(self, signal1D, n = 200, iters = 5, tform = lambda z : z):
-        """ fit self to signal1D using shgo and normalised least sqaures metric """
-        result = shgo(self._errf,
-                      args = (self, signal1D, tform),
-                      bounds = [(self.v._l[k], self.v._u[k]) for k in self.v],
-                      n = n,
-                      iters = iters,
-                      sampling_method = 'sobol')
-
-        # the last iteration isn't necessarily the global minimum
-        for i, k in enumerate(self.v):
-            self.v[k] = result.x[i]
-
-        return pd.Series({
-                'parameters':   deepcopy(self.v),
-                'fitted':       signal1D,
-                'opt_result':   result,
-            })

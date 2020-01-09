@@ -131,7 +131,8 @@ def test_arithmetic_between_Pm1Ds(model, model2):
 
 def test_fishgo(model, sinusoid):
     pm = Parametric1D(*model.values())
-    table = pm.fitshgo(sinusoid, n = 5, iters = 1) # for fast evaluation
+    shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
+    table = pm.fit(sinusoid, 'shgo', opts = shgo_opts)
 
     assert type(table) == pd.Series
     for idx in table.index:
@@ -148,5 +149,6 @@ def test_gui(model, sinusoid):
 @pytest.mark.plot
 def test_fit(model, sinusoid):
     pm = Parametric1D(*model.values())
-    opt_result = pm.fitshgo(sinusoid, n = 5, iters = 1) # for fast evaluation
+    shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
+    opt_result = pm.fit(sinusoid, 'shgo', opts = shgo_opts)
     pm.gui(sinusoid.x, persistent_signals = [sinusoid])
