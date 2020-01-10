@@ -89,3 +89,25 @@ def snr_boxplot(pm1d, x, metric, snrs, N, **callkwargs):
     plt.tight_layout()
 
     return dataset
+
+def percentage_error_metric_creator(parameter, fitter, fitter_kwargs = {}):
+    """ returns a metric that measures the percentage error in a parameter fit
+
+    Args:
+        parameter:      the name of the parameter to measure the error on
+        fitter:         the fitting method to fit the test case with. should
+                        accept a Signal1D as it's first input followed by any
+                        desired keyword arguments
+        fitter_kwargs:  keyword arguments to pass to the fitter function
+
+    Returns:
+        metric_function:a metric that is approriate to pass to apply_metric_to
+                        or snr_boxplot, that measures the percentage error in
+                        the fit to parameter using the specified fitter
+    """
+    def metric(sig1d, mdata):
+        fit_mdata = fitter(sig1d, **fitter_kwargs)
+        estimated = fit_mdata.parameters[parameter]
+        percent = 100*np.abs(estimated - mdata[parameter])/mdata[parameter]
+        return percent, fit_mdata
+    return metric
