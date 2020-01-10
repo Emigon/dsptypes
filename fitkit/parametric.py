@@ -88,10 +88,12 @@ class Parametric1D(object):
                 raise KeyError(f"{v} is an unused parameter")
             all_vars.remove(v)
 
-        if len(all_vars) != 1:
+        if len(all_vars) > 1:
             raise RuntimeError(f"expr does not contain only 1 free variable:{all_vars}")
-
-        self._free_var = all_vars[0]
+        elif len(all_vars) == 1:
+            self._free_var = all_vars[0]
+        else:
+            self._free_var = '_'
 
         for k in params:
             if not(isinstance(k, str)):

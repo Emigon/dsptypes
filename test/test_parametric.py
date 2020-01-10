@@ -46,8 +46,8 @@ def test_excess_free_variables(model):
         pm = Parametric1D(y*model['expr'], model['params'])
 
 def test_no_free_variables(model):
-    with pytest.raises(Exception) as e_info:
-        pm = Parametric1D(alpha**tau, model['params'])
+    # should work
+    pm = Parametric1D(alpha**tau, model['params'])
 
 def test_unused_params(model):
     with pytest.raises(Exception) as e_info:
