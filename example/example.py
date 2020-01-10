@@ -71,7 +71,8 @@ plt.show()
 # suppose we want to see how well we fit the frequency parameter omega
 def metric(sig1d, mdata):
     fit_mdata = pm.fit(sig1d, method = 'shgo', opts = opts)
-    percent = np.abs(fit_mdata['parameters']['omega'] - mdata['omega'])/mdata['omega']
+    estimated = fit_mdata.parameters['omega']
+    percent = 100*np.abs(estimated - mdata['omega'])/mdata['omega']
     return percent, fit_mdata
 
 table = apply_metric_to(sample(pm, 3, t, snr = 8), metric)
@@ -79,6 +80,7 @@ print(table.metric)
 
 # often we want to see how well we fit a paramter as a function of the snr (in dB).
 # fitkit makes this easy
-snr_boxplot(pm, t, metric, [6, 8, 10], 12)
+table = snr_sweep(pm, t, metric, [6, 8, 10], 12)
+snr_boxplot(table)
 plt.savefig('snr_boxplot.png')
 plt.show()

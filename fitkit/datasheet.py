@@ -70,25 +70,29 @@ def snr_sweep(pm1d, x, metric, snrs, N, **callkwargs):
 
     return pd.concat(tables, ignore_index = True)
 
-def snr_boxplot(pm1d, x, metric, snrs, N, **callkwargs):
+def snr_boxplot(dataset, **boxkwargs):
     """ plot the distribution of metric values vs snr as a series of box plots
 
-    Args:   same as datasheet.snr_sweep
+    Args:
+        dataset:    the output from snr_sweeep
+        boxkwargs:  keyword arguments for the boxplot. 'positions', 'widths',
+                    and 'whis' will be overwritten
     """
-    dataset = snr_sweep(pm1d, x, metric, snrs, N)
-
     # subdivide the data
+    snrs = dataset.snr.unique()
     folded = np.array([dataset[dataset.snr == snr].metric.values for snr in snrs])
 
     w = np.diff(snrs).min()/2
-    plt.boxplot(folded.T, positions = snrs, widths = len(snrs)*[w])
+    boxkwargs['positions'] = snrs
+    boxkwargs['widths'] = len(snrs)*[w]
+    boxkwargs['whis'] = [5, 95]
+    plt.boxplot(folded.T, **boxkwargs)
+
     plt.xlabel('SNR (dB)')
     plt.ylabel('Metric')
-    plt.ylim(-1e-2*dataset.metric.max())
+    plt.ylim(-1e-3)
     plt.xlim(np.min(snrs) - .6*w, np.max(snrs) + .6*w)
     plt.tight_layout()
-
-    return dataset
 
 def percentage_error_metric_creator(parameter, fitter, fitter_kwargs = {}):
     """ returns a metric that measures the percentage error in a parameter fit

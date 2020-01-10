@@ -63,7 +63,8 @@ def test_snr_boxplot(model):
     fig, axes = plt.subplots()
     plt.sca(axes)
 
-    data = snr_boxplot(model, x, dummy_metric, [12, 15, 18, 21], 100)
+    table = snr_sweep(model, x, dummy_metric, [15, 20], 4)
+    data = snr_boxplot(table)
 
     fig.tight_layout()
     plt.show()
