@@ -5,14 +5,19 @@ import sympy as sp
 
 from fitkit import *
 
+from pint import UnitRegistry, set_application_registry
+ureg = UnitRegistry()
+ureg.setup_matplotlib(True)
+set_application_registry(ureg)
+
 x, y, tau, alpha = sp.symbols('x y tau alpha')
 
 @pytest.fixture
 def model():
     # <symbol> : (lower limit, setpoint, upper limit)
     parameters = {
-        'tau':    (0.0,   1.0,    5.0),
-        'alpha':  (-10,   0,      10),
+        'tau':    (0.0*ureg('1/s'), 1.0*ureg('1/s'), 5.0*ureg('1/s')),
+        'alpha':  (-10, 0, 10),
     }
 
     return {'expr': sp.exp(tau*x) + alpha, 'params': parameters}
@@ -23,8 +28,8 @@ def model2():
 
     # <symbol> : (lower limit, setpoint, upper limit)
     parameters = {
-        'beta':   (1e2,   1e3,    1e4),
-        'gamma':  (1,   2,      3),
+        'beta':   (1e2*ureg('Hz'), 1*ureg('kHz'), 10*ureg('kHz')),
+        'gamma':  (1, 2, 3),
     }
 
     return {'expr': gamma*sp.sin(beta*x), 'params': parameters}
@@ -96,7 +101,7 @@ def test_call(model):
     pm = Parametric1D(*model.values())
 
     x = np.linspace(0, 1, 100)*ureg('s')
-    y_np = np.exp(model['params']['tau'][1]*x.magnitude) + model['params']['alpha'][1]
+    y_np = np.exp(model['params']['tau'][1]*x) + model['params']['alpha'][1]
 
     y = pm(x)
     assert y_np == pytest.approx(y.values)
@@ -143,12 +148,12 @@ def test_fishgo(model, sinusoid):
 @pytest.mark.plot
 def test_gui(model, sinusoid):
     pm = Parametric1D(*model.values())
-    pm.gui(np.linspace(0, 1, 100)*ureg('s'), persistent_signals = [sinusoid])
-    pm.gui(np.linspace(0, 1, 100)*ureg('s'), fft = True)
+    sl, rd = pm.gui(np.linspace(0, 1, 100)*ureg('s'), persistent_signals = [sinusoid])
+    sl, rd = pm.gui(np.linspace(0, 1, 100)*ureg('s'), fft = True)
 
 @pytest.mark.plot
 def test_fit(model, sinusoid):
     pm = Parametric1D(*model.values())
     shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
     opt_result = pm.fit(sinusoid, 'shgo', opts = shgo_opts)
-    pm.gui(sinusoid.x, persistent_signals = [sinusoid])
+    sl, rd = pm.gui(sinusoid.x, persistent_signals = [sinusoid])

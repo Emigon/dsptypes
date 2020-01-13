@@ -2,7 +2,12 @@ import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from fitkit import Signal1D, ureg
+from fitkit import Signal1D
+
+from pint import UnitRegistry, set_application_registry
+ureg = UnitRegistry()
+ureg.setup_matplotlib(True)
+set_application_registry(ureg)
 
 @pytest.fixture
 def sinusoid():

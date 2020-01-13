@@ -1,18 +1,5 @@
-import warnings
-
-from pint import UnitRegistry, set_application_registry
-
-ureg = UnitRegistry()
-ureg.setup_matplotlib(True)
-set_application_registry(ureg)
-
-ureg.define('samples = 1') # for unspecified units
-
-Q_ = ureg.Quantity
-
-with warnings.catch_warnings():
-  warnings.simplefilter("ignore")
-  Q_([])
+import os
+os.environ['PINT_ARRAY_PROTOCOL_FALLBACK'] = "0" # for numpy support with pint
 
 from .signal1D import *
 from .parametric import *

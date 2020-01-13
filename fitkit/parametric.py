@@ -58,7 +58,10 @@ class ParameterDict(MutableMapping):
 def default_errf(v, self, signal1D, tform):
     try:
         for i, k in enumerate(self.v):
-            self.v[k] = v[i]
+            if hasattr(self.v[k], 'to_base_units'):
+                self.v[k] = v[i]*self.v[k].to_base_units().units
+            else:
+                self.v[k] = v[i]
     except:
         warnings.warn('optimizer attempted to set parameter outside of bounds')
         return float('inf')
@@ -166,18 +169,13 @@ class Parametric1D(object):
                         x, with noise added if snr is specified. noise is useful
                         for algorithm testing
         """
-        try:
-            f = sympy.lambdify(self._free_var, self.expr.subs(self.v), "numpy")
-            if hasattr(x, 'units'):
-                z = f(np.array(x.magnitude, dtype = complex))
-            else:
-                z = f(np.array(x, dtype = complex))
-        except:
-            warnings.warn('failed to lambdify. evaluating slowly with subs instead')
-            f = self.expr.subs(self.v)
-            z = np.array([f.subs(self._free_var, xi) for xi in x], dtype = complex)
+        parameters = [k for k in self.v]
+        values = [self.v[k] for k in self.v]
 
-        if  not(hasattr(z, '__iter__')):
+        f = sympy.lambdify(parameters + [self._free_var], self.expr, "numpy")
+        z = f(*(values + [x])).astype('complex128')
+
+        if not(hasattr(z, '__iter__')):
             # we have unintentionally simplified self.expr to a constant
             z = np.array(len(x)*[z])
 
@@ -225,26 +223,41 @@ class Parametric1D(object):
             'dual_annealing':           spopt.dual_annealing,
         }
 
+        # convert all the parameters into base units so that the optimiser doesn't
+        # work with pint types
+        b, x0 = [], []
+        for k in self.v:
+            if hasattr(self.v[k], 'to_base_units'):
+                bu = self.v[k].to_base_units().units
+                x0 += [self.v[k].to(bu).magnitude]
+                b  += [(self.v._l[k].to(bu).magnitude, self.v._u[k].to(bu).magnitude)]
+            else:
+                x0 += [self.v[k]]
+                b  += [(self.v._l[k], self.v._u[k])]
+
         args = (self, sig1d, tform)
 
         if method in global_methods:
-            b = [(self.v._l[k], self.v._u[k]) for k in self.v]
             result = global_methods[method](errf, args = args, bounds = b, **opts)
         else:
-            x0 = [self.v[k] for k in self.v]
             result = spopt.minimize(errf, x0, args = args, method = method, **opts)
 
         # the last iteration isn't necessarily the global minimum
         for i, k in enumerate(self.v):
-            if result.x[i] < self.v._l[k]:
+            if hasattr(self.v[k], 'to_base_units'):
+                x = result.x[i]*self.v[k].to_base_units().units
+            else:
+                x = result.x[i]
+
+            if x < self.v._l[k]:
                 self.v[k] = result.v._l[k]
-            elif result.x[i] > self.v._u[k]:
+            elif x > self.v._u[k]:
                 self.v[k] = result.v._u[k]
-            elif np.isnan(result.x[i]):
+            elif np.isnan(x):
                 raise RuntimeError('Optimization failed to explore inside the\
                                     parameter space')
             else:
-                self.v[k] = result.x[i]
+                self.v[k] = x
 
         return pd.Series({
                 'parameters':   deepcopy(self.v),
@@ -355,11 +368,26 @@ class Parametric1D(object):
             else:
                 subax = divider.append_axes("bottom", size = "100%", pad = .5)
             lo, hi = self.v._l[p], self.v._u[p]
-            sl[p] = Slider(subax, p, lo, hi, valinit = y, valstep = (hi - lo)/100)
+            if hasattr(self.v[p], 'to_base_units'):
+                lo = self.v._l[p].to(y.units).magnitude
+                hi = self.v._u[p].to(y.units).magnitude
+                y0 = y.magnitude
+                txt = f"{p} + ({str(y.units)})"
+            else:
+                lo = self.v._l[p]
+                hi = self.v._u[p]
+                y0 = y
+                txt = p
+
+            step = (hi - lo)/500
+            sl[p] = Slider(subax, txt, lo, hi, valinit = y0, valstep = step)
 
         def update(event):
             for p in self.v:
-                self.v[p] = sl[p].val
+                if hasattr(self.v[p], 'units'):
+                    self.v[p] = sl[p].val*self.v[p].units
+                else:
+                    self.v[p] = sl[p].val
 
             for ax2, tform, line in self._parametric_traces:
                 trace = tform(self(x, **callkwargs))

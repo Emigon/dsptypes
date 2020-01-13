@@ -2,8 +2,11 @@ import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from fitkit import Signal1D, ureg
+from fitkit import Signal1D
 from fitkit.decimate import *
+
+from pint import UnitRegistry
+ureg = UnitRegistry()
 
 @pytest.fixture
 def sinusoid():

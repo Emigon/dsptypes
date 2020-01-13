@@ -10,6 +10,7 @@ additonally the fourier transform may be generated (with correct units) by calli
 Signal1D.fft()
 """
 
+import warnings
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,27 +40,6 @@ def return_copy(name):
         return cp
     return wrapper
 
-def pint_safe_linspace(lo, hi, N, endpoint = True):
-    if hasattr(lo, 'units') and not(hasattr(hi, 'units')):
-        raise TypeError('lo and hi must both be numeric or pint types')
-    if hasattr(hi, 'units') and not(hasattr(hi, 'units')):
-        raise TypeError('lo and hi must both be numeric or pint types')
-
-    if hasattr(lo, 'units'):
-        base_units = lo.to_base_units().units
-        lo_base = lo.to_base_units().magnitude
-        hi_base = hi.to_base_units().magnitude
-        arr = np.linspace(lo_base, hi_base, N, endpoint = endpoint)*base_units
-        return arr.to(min([lo.units, hi.units]))
-    else:
-        return np.linspace(lo, hi, N, endpoint = endpoint)
-
-def pint_safe_diff(arr):
-    if hasattr(arr, 'units'):
-        return np.diff(arr.magnitude) * arr.units
-    else:
-        return np.diff(arr)
-
 class Signal1D(object):
     def __init__(self,
                  z,
@@ -86,11 +66,11 @@ class Signal1D(object):
             raise RuntimeError("Cannot specify both xcentspan and xlims")
         elif xcentspan != (None, None):
             cent, span = xcentspan
-            self._x = pint_safe_linspace(cent - span/2, cent + span/2, len(z))
+            self._x = np.linspace(cent - span/2, cent + span/2, len(z))
         elif xlims != (None, None):
             if xlims[0] > xlims[1]:
                 raise ValueError("xlims must have format [a, b] with b > a")
-            self._x = pint_safe_linspace(xlims[0], xlims[1], len(z), endpoint = False)
+            self._x = np.linspace(xlims[0], xlims[1], len(z), endpoint = False)
         elif xraw is not None:
             if not(hasattr(xraw, '__iter__')):
                 raise TypeError('xraw must be iterable')
@@ -100,10 +80,13 @@ class Signal1D(object):
         else:
             self._x = np.arange(len(z))
 
-        if hasattr(self.x, 'units'):
-            self._z = pd.Series(np.complex128(z), index = self.x.magnitude)
-        else:
-            self._z = pd.Series(np.complex128(z), index = self.x)
+        if hasattr(z, 'units'):
+            # strip them
+            z = z.magnitude
+            warnings.warn('Units for z are not currently supported.')
+
+        idx = self.x.magnitude if hasattr(self.x, 'units') else self.x
+        self._z = pd.Series(np.complex128(z), index = idx)
 
         # {{{ partially inherit from pandas Series
         setattr(Signal1D, '__len__', lambda obj: getattr(obj._z, '__len__')())
@@ -111,9 +94,6 @@ class Signal1D(object):
         setattr(Signal1D, 'sum', lambda obj: getattr(obj._z, 'sum')())
         setattr(Signal1D, 'min', lambda obj: getattr(obj._z, 'min')())
         setattr(Signal1D, 'max', lambda obj: getattr(obj._z, 'max')())
-
-        setattr(Signal1D, 'idxmin', lambda obj: getattr(obj._z, 'idxmin')())
-        setattr(Signal1D, 'idxmax', lambda obj: getattr(obj._z, 'idxmax')())
 
         setattr(Signal1D, '__add__', lambda obj, oth: return_copy('__add__')(obj, oth))
         setattr(Signal1D, '__radd__', lambda obj, oth: return_copy('__add__')(obj, oth))
@@ -164,6 +144,14 @@ class Signal1D(object):
             raise TypeError('can only compare Signal1D to Signal1D')
         result._z = getattr(result._z, '__ne__')(other._z)
         return result
+
+    def idxmin(self):
+        """ return the x value coresponding to the smallest real value in self """
+        return self.x[np.argmin(np.real(self.values))]
+
+    def idxmax(self):
+        """ return the x value coresponding to the largest real value in self """
+        return self.x[np.argmax(np.real(self.values))]
     # }}}
 
     def fft(self):
@@ -212,7 +200,7 @@ class Signal1D(object):
 
     @property
     def fs(self):
-        return 1.0/min(pint_safe_diff(self.x))
+        return 1.0/min(np.diff(self.x))
 
     @property
     def pwr(self):

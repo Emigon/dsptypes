@@ -17,10 +17,26 @@ def sample(pm1d, N, x, **callkwargs):
     v_init = deepcopy(pm1d.v)
     for _ in range(N):
         for p in pm1d.v:
-            pm1d.v[p] = np.random.uniform(pm1d.v._l[p], pm1d.v._u[p])
+            pm1d.v[p] = pint_safe_uniform(pm1d.v._l[p], pm1d.v._u[p])
         samples, mdata = pm1d(x, **callkwargs), deepcopy(pm1d.v)
         pm1d.v = v_init # reset the model back to its original state
         yield samples, mdata
+
+def pint_safe_uniform(lo, hi, **kwargs):
+    if hasattr(lo, 'units') and not(hasattr(hi, 'units')):
+        raise TypeError('lo and hi must both be numeric or pint types')
+    if hasattr(hi, 'units') and not(hasattr(hi, 'units')):
+        raise TypeError('lo and hi must both be numeric or pint types')
+
+    if hasattr(lo, 'units'):
+        base_units = lo.to_base_units().units
+        lo_base = lo.to_base_units().magnitude
+        hi_base = hi.to_base_units().magnitude
+        samples = np.random.uniform(lo_base, hi_base, **kwargs)
+
+        return (samples*base_units).to(min([lo.units, hi.units]))
+    else:
+        return np.random.uniform(lo, hi, **kwargs)
 
 def apply_metric_to(sampler, metric):
     """ evalute metric on samples drawn from sampler
