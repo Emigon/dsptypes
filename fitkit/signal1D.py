@@ -112,8 +112,8 @@ class Signal1D(object):
         setattr(Signal1D, 'min', lambda obj: getattr(obj._z, 'min')())
         setattr(Signal1D, 'max', lambda obj: getattr(obj._z, 'max')())
 
-        setattr(Signal1D, 'idxmin', lambda obj: obj.x.units * getattr(obj._z, 'idxmin')())
-        setattr(Signal1D, 'idxmax', lambda obj: obj.x.units * getattr(obj._z, 'idxmax')())
+        setattr(Signal1D, 'idxmin', lambda obj: getattr(obj._z, 'idxmin')())
+        setattr(Signal1D, 'idxmax', lambda obj: getattr(obj._z, 'idxmax')())
 
         setattr(Signal1D, '__add__', lambda obj, oth: return_copy('__add__')(obj, oth))
         setattr(Signal1D, '__radd__', lambda obj, oth: return_copy('__add__')(obj, oth))
