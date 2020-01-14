@@ -278,6 +278,8 @@ class Parametric1D(object):
             tform:      a transformation to apply to the signal before plotting
             callkwargs: **kwargs for self.__call__
         """
+        self.reset_gui() # clear internal state
+
         fig, (ax1, ax2) = plt.subplots(nrows = 2)
 
         # plot any persistent signals
@@ -325,6 +327,11 @@ class Parametric1D(object):
         plt.show()
 
         return sliders, radio
+
+    def reset_gui(self):
+        """ resets internal state variables governing any gui """
+        self._parametric_traces = []
+        self._gui_style = 'real'
 
     def add_to_axes(self, ax, x, style, tform = lambda z : z, fft = False,
                     **callkwargs):
