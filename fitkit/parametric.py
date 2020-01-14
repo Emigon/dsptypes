@@ -306,6 +306,7 @@ class Parametric1D(object):
             self._gui_style = key
 
             axtop, tform, line = self._parametric_traces[0]
+            axtop.set_ylabel(self._gui_style)
 
             trace = tform(self(x, **callkwargs))
             if fft:
