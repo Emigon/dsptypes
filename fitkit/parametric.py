@@ -374,7 +374,7 @@ class Parametric1D(object):
             if i == 0:
                 subax = ax
             else:
-                subax = divider.append_axes("bottom", size = "100%", pad = .5)
+                subax = divider.append_axes("bottom", size = "100%", pad = .1)
             lo, hi = self.v._l[p], self.v._u[p]
             if hasattr(self.v[p], 'to_base_units'):
                 lo = self.v._l[p].to(y.units).magnitude
