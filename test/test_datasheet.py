@@ -22,27 +22,31 @@ def test_apply_metric_to(model):
     def lsq_metric(sig1d, mdata):
         shgo_opts = {'n': 1, 'iters': 1, 'sampling_method': 'sobol'}
         metadata = model.fit(sig1d, 'shgo', opts = shgo_opts)
-        return model(sig1d.x)@sig1d, metadata
+        return {'test': model(sig1d.x)@sig1d}, metadata
 
     x = np.linspace(0, 1, 100)
-    table = apply_metric_to(sample(model, 4, x, snr = 20) , lsq_metric)
+    table, mdata = apply_metric_to(sample(model, 4, x, snr = 20), lsq_metric)
+
+    assert len(mdata) == 4
 
     assert len(table) == 4
-    for col in table.columns:
-        assert col in ['metric', 'parameters', 'fitted', 'opt_result']
+    assert 'test' in table
 
 def test_snr_sweep(model):
     def lsq_metric(sig1d, mdata):
         shgo_opts = {'n': 1, 'iters': 1, 'sampling_method': 'sobol'}
         metadata = model.fit(sig1d, 'shgo', opts = shgo_opts)
-        return model(sig1d.x)@sig1d, metadata
+        return {'test': model(sig1d.x)@sig1d}, metadata
 
     x = np.linspace(0, 1, 100)
-    table = snr_sweep(model, x, lsq_metric, [15, 20], 4)
+    table, mdata = snr_sweep(model, x, lsq_metric, [15, 20], 4)
+
+    assert len(mdata) == 2
+    assert len(mdata[0]) == 4
 
     assert len(table) == 8
-    for col in table.columns:
-        assert col in ['metric', 'snr', 'parameters', 'fitted', 'opt_result']
+    assert 'test' in table
+    assert 'snr' in table
 
     for snr in table.snr.values:
         assert snr in [15, 20]
@@ -56,15 +60,11 @@ def test_sample(model):
 @pytest.mark.plot
 def test_snr_boxplot(model):
     def dummy_metric(sig1d, mdata):
-        return np.abs(np.random.normal()), pd.Series({'fitted': sig1d})
+        return {'test': np.abs(np.random.normal())}, pd.Series({'fitted': sig1d})
 
     x = np.linspace(0, 1, 24)
 
-    fig, axes = plt.subplots()
-    plt.sca(axes)
-
-    table = snr_sweep(model, x, dummy_metric, [15, 20], 4)
-    data = snr_boxplot(table)
-
+    table, mdata = snr_sweep(model, x, dummy_metric, [15, 20], 4)
+    fig, axes = snr_boxplot(table)
     fig.tight_layout()
     plt.show()
