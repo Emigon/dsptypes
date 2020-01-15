@@ -173,11 +173,13 @@ class Parametric1D(object):
         values = [self.v[k] for k in self.v]
 
         f = sympy.lambdify(parameters + [self._free_var], self.expr, "numpy")
-        z = f(*(values + [x])).astype('complex128')
+        z = f(*(values + [x]))
 
         if not(hasattr(z, '__iter__')):
             # we have unintentionally simplified self.expr to a constant
             z = np.array(len(x)*[z])
+
+        z = z.astype('complex128')
 
         if snr < np.inf:
             noise = dist(size = len(z)) + 1j*dist(size = len(z))
