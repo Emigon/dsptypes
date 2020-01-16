@@ -21,7 +21,7 @@ from fitkit import *
 
 plotting_styles = \
     {
-        'dB':   lambda z: 10*np.log10(np.abs(z.values)),
+        'dB':   lambda z: 20*np.log10(np.abs(z.values)),
         'dBm':  lambda z: 10*np.log10(np.abs(z.values)) + 30,
         'abs':  lambda z: np.abs(z.values),
         'rad':  lambda z: np.angle(z.values),
