@@ -24,8 +24,8 @@ plotting_styles = \
         'dB':   lambda z: 20*np.log10(np.abs(z.values)),
         'dBm':  lambda z: 10*np.log10(np.abs(z.values)) + 30,
         'abs':  lambda z: np.abs(z.values),
-        'rad':  lambda z: np.angle(z.values),
-        'deg':  lambda z: np.deg2rad(np.angle(z.values)),
+        'rad':  lambda z: np.angle(z.values, deg = False),
+        'deg':  lambda z: np.angle(z.values, deg = True),
         'real': lambda z: np.real(z.values),
         'imag': lambda z: np.imag(z.values),
     }
