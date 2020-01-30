@@ -172,6 +172,9 @@ class Parametric1D(object):
         parameters = [k for k in self.v]
         values = [self.v[k] for k in self.v]
 
+        if not(hasattr(x, '__iter__')):
+            x = np.array([x]) # make x look iterable if it isn't for Signal1D
+
         f = sympy.lambdify(parameters + [self._free_var], self.expr, "numpy")
         z = f(*(values + [x]))
 
