@@ -196,7 +196,10 @@ class Signal1D(object):
 
     @property
     def x(self):
-        return self._x
+        if hasattr(self._x, 'units'):
+            return self._x
+        else:
+            return np.array(self._x)
 
     def copy(self):
         return deepcopy(self)
