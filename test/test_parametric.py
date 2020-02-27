@@ -7,6 +7,7 @@ from fitkit import *
 
 from pint import UnitRegistry, set_application_registry
 ureg = UnitRegistry()
+
 ureg.setup_matplotlib(True)
 set_application_registry(ureg)
 
@@ -144,6 +145,13 @@ def test_fishgo(model, sinusoid):
         assert idx in ['parameters', 'fitted', 'opt_result']
     assert type(table.parameters) == ParameterDict
     assert type(table.fitted) == Signal1D
+
+def test_single_point_eval():
+    x, a0, k = sp.symbols('x a0 k')
+    pm = Parametric1D(a0 + k*x**2,\
+                    {'a0': (7.372, 7.374, 7.376), 'k': (-.001, -.0001, 0)})
+
+    pm(0.5)
 
 @pytest.mark.plot
 def test_gui(model, sinusoid):
