@@ -171,7 +171,16 @@ class Signal1D(object):
         if xunits is not None:
             xaxis = xaxis.to(xunits)
 
-        line, = plt.plot(xaxis, plotting_styles[style](self))
+        if hasattr(self.x, 'magnitude'):
+            unique = np.unique(self.x.magnitude)
+        else:
+            unique = np.unique(self.x)
+           
+        if len(unique) == len(self.x):
+            line, = plt.plot(xaxis, plotting_styles[style](self))
+        else:
+            line, = plt.plot(xaxis, plotting_styles[style](self), 'o')
+
         plt.ylabel(style)
         plt.tight_layout()
         return line
