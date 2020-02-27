@@ -119,9 +119,7 @@ class Parametric1D(object):
 
     # {{{ define arithmetic with multiple Parametric1D objects
     def _combine_parameters(self, other):
-        params = {}
-        for k in self.v:
-            params[k] = (self.v._l[k], self.v[k], self.v._u[k])
+        params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
         for k in other.v:
             if k in params:
                 # take the intersection of the lower and upper bounds
@@ -136,25 +134,45 @@ class Parametric1D(object):
         return params
 
     def __add__(self, other):
-        return Parametric1D(self.expr + other.expr, self._combine_parameters(other))
+        if isinstance(other, Parametric1D):
+            return Parametric1D(self.expr + other.expr, self._combine_parameters(other))
+        else:
+            # try using sympy to apply arithmetic to expression
+            params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
+            return Parametric1D(self.expr + other, params)
 
     def __radd__(self, other):
         return self.__add__(other)
 
     def __sub__(self, other):
-        return Parametric1D(self.expr - other.expr, self._combine_parameters(other))
+        if isinstance(other, Parametric1D):
+            return Parametric1D(self.expr - other.expr, self._combine_parameters(other))
+        else:
+            # try using sympy to apply arithmetic to expression
+            params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
+            return Parametric1D(self.expr - other, params)
 
     def __rsub__(self, other):
-        return self.__sub__(other)
+        return -1*self.__sub__(other)
 
     def __mul__(self, other):
-        return Parametric1D(self.expr * other.expr, self._combine_parameters(other))
+        if isinstance(other, Parametric1D):
+            return Parametric1D(self.expr * other.expr, self._combine_parameters(other))
+        else:
+            # try using sympy to apply arithmetic to expression
+            params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
+            return Parametric1D(self.expr*other, params)
 
     def __rmul__(self, other):
         return self.__mul__(other)
 
     def __truediv__(self, other):
-        return Parametric1D(self.expr / other.expr, self._combine_parameters(other))
+        if isinstance(other, Parametric1D):
+            return Parametric1D(self.expr / other.expr, self._combine_parameters(other))
+        else:
+            # try using sympy to apply arithmetic to expression
+            params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
+            return Parametric1D(self.expr / other, params)
     # }}}
 
     def __call__(self, x, snr = np.inf, dist = np.random.normal):
