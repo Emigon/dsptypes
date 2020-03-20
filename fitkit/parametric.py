@@ -83,7 +83,7 @@ class Parametric1D(object):
         if not(isinstance(expr, tuple(sympy.core.all_classes))):
             raise TypeError("expr must be a sympy expression")
 
-        self.expr = expr
+        self._expr = expr
 
         all_vars = [sym.name for sym in expr.free_symbols]
         for v in params.keys():
@@ -113,9 +113,17 @@ class Parametric1D(object):
 
         self.v = ParameterDict(params)
 
+        parameters = [k for k in self.v]
+        self.f = sympy.lambdify(parameters + [self._free_var], self._expr, "numpy")
+
         # gui variables
         self._parametric_traces = []
         self._gui_style = 'real'
+
+    @property
+    def expr(self):
+        """ user can see the expression but can't modify it once initialised """
+        return self._expr
 
     # {{{ define arithmetic with multiple Parametric1D objects
     def _combine_parameters(self, other):
@@ -187,14 +195,10 @@ class Parametric1D(object):
                         x, with noise added if snr is specified. noise is useful
                         for algorithm testing
         """
-        parameters = [k for k in self.v]
-        values = [self.v[k] for k in self.v]
-
         if not(hasattr(x, '__iter__')):
             x = np.array([x]) # make x look iterable if it isn't for Signal1D
 
-        f = sympy.lambdify(parameters + [self._free_var], self.expr, "numpy")
-        z = f(*(values + [x]))
+        z = self.f(*([self.v[k] for k in self.v] + [x]))
 
         if not(hasattr(z, '__iter__')):
             # we have unintentionally simplified self.expr to a constant
