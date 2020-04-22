@@ -68,11 +68,15 @@ class ParameterDict(MutableMapping):
 
 def default_errf(v, self, signal1D, tform):
     try:
-        for i, k in enumerate(self.v):
+        i = 0
+        for k in self.v:
+            if k in self._frozen:
+                continue
             if hasattr(self.v[k], 'to_base_units'):
                 self.v[k] = v[i]*self.v[k].to_base_units().units
             else:
                 self.v[k] = v[i]
+            i += 1
     except:
         warnings.warn('optimizer attempted to set parameter outside of bounds')
         return float('inf')
@@ -123,6 +127,7 @@ class Parametric1D(object):
                 raise ValueError(f'params item {params[k]} must be ascending')
 
         self.v = ParameterDict(params)
+        self._frozen = []
 
         parameters = [k for k in self.v]
         self.f = sympy.lambdify(parameters + [self._free_var], self._expr, "numpy")
@@ -265,6 +270,9 @@ class Parametric1D(object):
         # work with pint types
         b, x0 = [], []
         for k in self.v:
+            if k in self._frozen:
+                continue
+
             if hasattr(self.v[k], 'to_base_units'):
                 bu = self.v[k].to_base_units().units
                 x0 += [self.v[k].to(bu).magnitude]
@@ -281,27 +289,41 @@ class Parametric1D(object):
             result = spopt.minimize(errf, x0, args = args, method = method, **opts)
 
         # the last iteration isn't necessarily the global minimum
-        for i, k in enumerate(self.v):
+        i = 0
+        for k in self.v:
+            if k in self._frozen:
+                continue
+
             if hasattr(self.v[k], 'to_base_units'):
                 x = result.x[i]*self.v[k].to_base_units().units
             else:
                 x = result.x[i]
 
-            if x < self.v._l[k]:
-                self.v[k] = result.v._l[k]
-            elif x > self.v._u[k]:
-                self.v[k] = result.v._u[k]
-            elif np.isnan(x):
+            if np.isnan(x):
                 raise RuntimeError('Optimization failed to explore inside the\
                                     parameter space')
-            else:
-                self.v[k] = x
+            self.v.set(k, x, clip=True)
+            i += 1
 
         return pd.Series({
                 'parameters':   deepcopy(self.v),
                 'fitted':       sig1d,
                 'opt_result':   result,
             })
+
+    def freeze(self, parameter_names):
+        if hasattr(parameter_names, '__iter__'):
+            for p in parameter_names:
+                self._frozen.append(p)
+        else:
+            self._frozen.append(parameter_name)
+
+    def unfreeze(self, parameter_names):
+        if hasattr(parameter_names, '__iter__'):
+            for p in parameter_names:
+                self._frozen.remove(p)
+        else:
+            self._frozen.remove(parameter_name)
 
     def gui(self, x, fft = False, tform = lambda z : z, persistent_signals = [],
             **callkwargs):
@@ -409,6 +431,9 @@ class Parametric1D(object):
 
         sl = {}
         for i, (p, y) in enumerate(self.v.items()):
+            if p in self._frozen:
+                continue
+
             if i == 0:
                 subax = ax
             else:
@@ -430,6 +455,8 @@ class Parametric1D(object):
 
         def update(event):
             for p in self.v:
+                if p in self._frozen:
+                    continue
                 if hasattr(self.v[p], 'units'):
                     self.v[p] = sl[p].val*self.v[p].units
                 else:
