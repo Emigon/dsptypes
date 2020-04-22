@@ -43,6 +43,17 @@ class ParameterDict(MutableMapping):
                                 f"{self._l[key]} and {self._u[key]}")
         self.store[key] = value
 
+    def set(self, key, value, clip=False):
+        if not(clip):
+            self[key] = value
+        else:
+            if self._l[key] > value:
+                self[key] = self._l[key]
+            elif self._u[key] < value:
+                self[key] = self._u[key]
+            else:
+                self[key] = value
+
     def __delitem__(self, key):
         del self.store[key]
 
