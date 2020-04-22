@@ -5,19 +5,13 @@ import sympy as sp
 
 from fitkit import *
 
-from pint import UnitRegistry, set_application_registry
-ureg = UnitRegistry()
-
-ureg.setup_matplotlib(True)
-set_application_registry(ureg)
-
 x, y, tau, alpha = sp.symbols('x y tau alpha')
 
 @pytest.fixture
 def model():
     # <symbol> : (lower limit, setpoint, upper limit)
     parameters = {
-        'tau':    (0.0*ureg('1/s'), 1.0*ureg('1/s'), 5.0*ureg('1/s')),
+        'tau':    (0.0, 1.0, 5.0),
         'alpha':  (-10, 0, 10),
     }
 
@@ -29,7 +23,7 @@ def model2():
 
     # <symbol> : (lower limit, setpoint, upper limit)
     parameters = {
-        'beta':   (1e2*ureg('Hz'), 1*ureg('kHz'), 10*ureg('kHz')),
+        'beta':   (1e2, 1e3, 10e3),
         'gamma':  (1, 2, 3),
     }
 
@@ -39,7 +33,7 @@ def model2():
 def sinusoid():
     fs = 20e3
     t = np.arange(0, 0.1, 1/fs)
-    return Signal1D(np.sin(2*np.pi*1e3*t), xlims = (0*ureg('s'), 1*ureg('s')))
+    return pd.Series(np.sin(2*np.pi*1e3*t), index=t)
 
 def test_correct_init(model):
     try:
@@ -99,17 +93,13 @@ def test_parameter_modification(model):
         pm.v['tau'] = 6
 
 def test_call(model):
-    pm = Parametric1D(*model.values())
+    pm = Parametric1D(*model.values(), call_type=np.float64)
 
-    x = np.linspace(0, 1, 100)*ureg('s')
+    x = np.linspace(0, 1, 100)
     y_np = np.exp(model['params']['tau'][1]*x) + model['params']['alpha'][1]
 
     y = pm(x)
-    assert y_np == pytest.approx(y.values)
-
-    np.random.seed(42)
-    y_noisy = pm(x, snr = 30)
-    assert y_np == pytest.approx(y_noisy.values, rel = 1e-3)
+    assert y_np == pytest.approx(y)
 
 def test_arithmetic_between_Pm1Ds(model, model2):
     pm1, pm2 = Parametric1D(*model.values()), Parametric1D(*model2.values())
@@ -135,33 +125,33 @@ def test_arithmetic_between_Pm1Ds(model, model2):
     assert pm6.v._l['alpha'] == 1
     assert pm6.v._u['alpha'] == 3
 
-def test_fishgo(model, sinusoid):
-    pm = Parametric1D(*model.values())
+def test_fitshgo(model, sinusoid):
+    pm = Parametric1D(*model.values(), call_type=type(sinusoid))
     shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
     table = pm.fit(sinusoid, 'shgo', opts = shgo_opts)
 
-    assert type(table) == pd.Series
-    for idx in table.index:
-        assert idx in ['parameters', 'fitted', 'opt_result']
-    assert type(table.parameters) == ParameterDict
-    assert type(table.fitted) == Signal1D
+    for key in table:
+        assert key in ['parameters', 'fitted', 'opt_result']
+    assert type(table['parameters']) == ParameterDict
+    assert type(table['fitted']) == pm._call_type
 
-def test_single_point_eval():
+def test_eval_at_points():
     x, a0, k = sp.symbols('x a0 k')
     pm = Parametric1D(a0 + k*x**2,\
-                    {'a0': (7.372, 7.374, 7.376), 'k': (-.001, -.0001, 0)})
+                      {'a0': (7.372, 7.374, 7.376), 'k': (-.001, -.0001, 0)},
+                      call_type=pd.Series)
 
-    pm(0.5)
+    y1 = pm(0.5)
+    y2 = pm([1, 2, 4])
 
 @pytest.mark.plot
 def test_gui(model, sinusoid):
-    pm = Parametric1D(*model.values())
-    sl, rd = pm.gui(np.linspace(0, 1, 100)*ureg('s'), persistent_signals = [sinusoid])
-    sl, rd = pm.gui(np.linspace(0, 1, 100)*ureg('s'), fft = True)
+    pm = Parametric1D(*model.values(), call_type=pd.Series)
+    sl = pm.gui(sinusoid.index, data=[sinusoid])
 
 @pytest.mark.plot
 def test_fit(model, sinusoid):
     pm = Parametric1D(*model.values())
     shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
     opt_result = pm.fit(sinusoid, 'shgo', opts = shgo_opts)
-    sl, rd = pm.gui(sinusoid.x, persistent_signals = [sinusoid])
+    sl, rd = pm.gui(sinusoid.index, data=[sinusoid])

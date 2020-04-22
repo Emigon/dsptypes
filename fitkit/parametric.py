@@ -3,14 +3,15 @@
 author: daniel parker
 
 defines the Parametric1D object. the user specifies some parameter space and a
-sympy encoded parametric function, and this object allows to generate signals
-from selected points in the parameter space, uniformly sample the parameter space
-and also provides a convenient gui for model fitting or for determining realistic
-parameter bounds
+sympy encoded parametric function, and this object generates signals from
+selected points in the parameter space and graphical fitting tools for model
+fitting or for determining realistic parameter bounds for automated fitting
 """
 
 import warnings
-import pandas as pd
+from copy import deepcopy
+from collections.abc import MutableMapping
+
 import numpy as np
 import sympy
 import scipy.optimize as spopt
@@ -18,12 +19,17 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.widgets import Slider, RadioButtons
 
-from copy import deepcopy
+from .call_types import _typefactory, _retrieve_x
 
-from collections.abc import MutableMapping
-
-from fitkit import Signal1D
-from .signal1D import *
+default_transforms = {
+    'real': lambda z: np.real(z),
+    'imag': lambda z: np.imag(z),
+    'abs':  lambda z: np.abs(z),
+    'dB':   lambda z: 20*np.log10(np.abs(z)),
+    'dBm':  lambda z: 10*np.log10(np.abs(z)) + 30,
+    'rad':  lambda z: np.angle(z, deg=False),
+    'deg':  lambda z: np.angle(z, deg=True),
+}
 
 class ParameterDict(MutableMapping):
     def __init__(self, params):
@@ -66,35 +72,23 @@ class ParameterDict(MutableMapping):
     def __keytransform__(self, key):
         return key
 
-def default_errf(v, self, signal1D, tform):
-    try:
-        i = 0
-        for k in self.v:
-            if k in self._frozen:
-                continue
-            if hasattr(self.v[k], 'to_base_units'):
-                self.v[k] = v[i]*self.v[k].to_base_units().units
-            else:
-                self.v[k] = v[i]
-            i += 1
-    except:
-        warnings.warn('optimizer attempted to set parameter outside of bounds')
-        return float('inf')
-
-    return tform(self(signal1D.x)) @ signal1D
-
 class Parametric1D(object):
-    def __init__(self, expr, params):
+    def __init__(self, expr, params, call_type=np.complex128):
         """ Parametric1D
         Args:
-            expr:   a sympy expression containing one free variable, and as many
-                    parameters as you would like
-            params: a dictionary of parameters of the following format
-                        {key: (lower, setpoint, upper), ...}
-                    key must be the symbol.name of one of the parameters in expr.
-                    (lower, upper) determine the bounds of the parameter space.
-                    setpoint must fall withing these bounds
+            expr:       a sympy expression containing one free variable, and as
+                        many parameters as you would like.
+            params:     a dictionary of parameters of the following format
+                            {key: (lower, setpoint, upper), ...}
+                        key must be the symbol.name of one of the parameters in
+                        expr. (lower, upper) determine the bounds of the
+                        parameter space. setpoint must fall withing these bounds.
+            call_type:  the type returned by Parametric1D.__call__. Supported
+                        special types are xarray.DataArray and pd.Series that
+                        can retain the x-axis the function was evaluated over.
         """
+        self._call_type = call_type
+
         if not(isinstance(expr, tuple(sympy.core.all_classes))):
             raise TypeError("expr must be a sympy expression")
 
@@ -130,11 +124,9 @@ class Parametric1D(object):
         self._frozen = []
 
         parameters = [k for k in self.v]
-        self.f = sympy.lambdify(parameters + [self._free_var], self._expr, "numpy")
+        self.f = sympy.lambdify(parameters + [self._free_var], self._expr)
 
-        # gui variables
         self._parametric_traces = []
-        self._gui_style = 'real'
 
     @property
     def expr(self):
@@ -199,66 +191,60 @@ class Parametric1D(object):
             return Parametric1D(self.expr / other, params)
     # }}}
 
-    def __call__(self, x, snr = np.inf, dist = np.random.normal):
-        """ self(x) will give a Signal1D of the parametric model evaluate at x
-        Args:
-            x:      the points to evaluate expr over. can be a pint array
-            snr:    signal to noise ratio in dB
-            dist:   noise distribution
+    @_typefactory
+    def __call__(self, x, parameters={}, clip=False):
+        """ evaluate the parametric expression over x for the current parameter values """
+        for key, val in parameters.items():
+            self.v.set(key, val, clip=clip)
+        parameter_values = [self.v[k] for k in self.v]
+        if hasattr(x, '__iter__'):
+            return [self.f(*parameter_values, pt) for pt in x]
+        else:
+            return self.f(*parameter_values, x)
 
-        Returns:
-            Signal1D:   the parametric model evaluated for parameter setpoints and
-                        x, with noise added if snr is specified. noise is useful
-                        for algorithm testing
-        """
-        if not(hasattr(x, '__iter__')):
-            x = np.array([x]) # make x look iterable if it isn't for Signal1D
+    def default_errf(v, self, sigma, metric):
+        try:
+            for i, key in enuemerate(key for key in self.v if key not in self._frozen):
+                self.v.set(key, v[i], clip=False)
+        except:
+            warnings.warn('optimizer attempted to set parameter outside of bounds')
+            return float('inf')
 
-        z = self.f(*([self.v[k] for k in self.v] + [x]))
+        return metric(self(_retrieve_x(sigma)), sigma)
 
-        if not(hasattr(z, '__iter__')):
-            # we have unintentionally simplified self.expr to a constant
-            z = np.array(len(x)*[z])
-
-        z = z.astype('complex128')
-
-        if snr < np.inf:
-            noise = dist(size = len(z)) + 1j*dist(size = len(z))
-            noise *= 10**(-snr/10) * np.std(z)**2 / np.std(noise)**2
-            z += noise
-
-        return Signal1D(z, xraw = x)
+    def default_metric(sigma1, sigma2):
+        return sum((y1 - y2)**2 for y1, y2 in zip(sigma1, sigma2))
 
     def fit(self,
-            sig1d,
-            method = 'Nelder-Mead',
-            errf = default_errf,
-            opts = {},
-            tform = lambda z : z):
+            sigma,
+            method='Nelder-Mead',
+            opts={},
+            errf=default_errf,
+            metric=default_metric):
         """ fit self to signal1D using scipy.minimize with self._errf
 
         Args:
-            sig1d:      the input signal to fit.
+            sigma:      the input signal to fit.
             method:     see scipy.minimize for local optimisation methods.
                         otherwise global methods 'differential_evolution', 'shgo'
                         and 'dual_annealing' are supported.
-            errf:       an error function that accepts the (v, self, sig1d, tform)
+            errf:       an error function that accepts the (v, self, sigma, tform)
                         as arguments, where v is the ParameterDict associated with
                         self. as in scipy this functions return type must be a
                         real number.
             opts:       the keyword arguments to pass to scipy.minimize or the
                         'dual_annealing', 'shgo' or 'differential_evolution' global
                         optimizers.
-            tform:      a transformation to apply to self(sig1d.x) before evaluating
-                        the cost function. in some cases the sig1d we want to fit
-                        to is a transformed instance of our applied model (e.g.
-                        it has additional constant components mixed in).
+            metric:     a function of two signals (self.__call__(x), sigma) that
+                        returns a the value of the cost function. A sum of squares
+                        of the residual signal (self.__call__(x) - sigma) is
+                        provided as a default.
         Returns:
-            table:      a pandas.Series object containg the ParameterDict associated
+            results:    a dictionary containg the ParameterDict associated
                         with the optima, a copy of the signal that was fitted and
                         the optimisation result metadata. some of this information
-                        is superfluous but makes for constructing a completely
-                        reproducable analysis of a large set of Signal1Ds easy.
+                        is superfluous but assists in logging the fits to a large
+                        set of inputs.
         """
         global_methods = {
             'differential_evolution':   spopt.differential_evolution,
@@ -266,52 +252,34 @@ class Parametric1D(object):
             'dual_annealing':           spopt.dual_annealing,
         }
 
-        # convert all the parameters into base units so that the optimiser doesn't
-        # work with pint types
-        b, x0 = [], []
-        for k in self.v:
-            if k in self._frozen:
-                continue
+        x0 = [self.v[k] for k in self.v if k not in self._frozen]
+        b  = [(self.v._l[k], self.v._u[k]) for k in self.v if k not in self._frozen]
 
-            if hasattr(self.v[k], 'to_base_units'):
-                bu = self.v[k].to_base_units().units
-                x0 += [self.v[k].to(bu).magnitude]
-                b  += [(self.v._l[k].to(bu).magnitude, self.v._u[k].to(bu).magnitude)]
-            else:
-                x0 += [self.v[k]]
-                b  += [(self.v._l[k], self.v._u[k])]
-
-        args = (self, sig1d, tform)
-
+        args = (self, sigma, metric)
         if method in global_methods:
-            result = global_methods[method](errf, args = args, bounds = b, **opts)
+            opt_result = global_methods[method](errf, args=args, bounds=b, **opts)
         else:
-            result = spopt.minimize(errf, x0, args = args, method = method, **opts)
+            opt_result = spopt.minimize(errf, x0, args=args, method=method, **opts)
 
-        # the last iteration isn't necessarily the global minimum
-        i = 0
-        for k in self.v:
-            if k in self._frozen:
-                continue
+        if np.any(np.isnan(opt_result.x)):
+            raise RuntimeError('Optimization failed to explore parameter space')
 
-            if hasattr(self.v[k], 'to_base_units'):
-                x = result.x[i]*self.v[k].to_base_units().units
-            else:
-                x = result.x[i]
+        # the last iteration isn't necessarily the global minimum so we set it here
+        for i, key in enumerate(key for key in self.v if key not in self._frozen):
+            self.v.set(key, opt_result.x[i], clip=True)
 
-            if np.isnan(x):
-                raise RuntimeError('Optimization failed to explore inside the\
-                                    parameter space')
-            self.v.set(k, x, clip=True)
-            i += 1
-
-        return pd.Series({
-                'parameters':   deepcopy(self.v),
-                'fitted':       sig1d,
-                'opt_result':   result,
-            })
+        return {
+            'parameters':   deepcopy(self.v),
+            'fitted':       sigma,
+            'opt_result':   opt_result,
+        }
 
     def freeze(self, parameter_names):
+        """ freeze parameters so they are excluded from fitting procedures
+        Args:
+            parameter_names: a parameter name or a list of parameter names to
+                             freeze.
+        """
         if hasattr(parameter_names, '__iter__'):
             for p in parameter_names:
                 self._frozen.append(p)
@@ -319,63 +287,78 @@ class Parametric1D(object):
             self._frozen.append(parameter_name)
 
     def unfreeze(self, parameter_names):
+        """ unfreeze parameters that have been frozen
+
+        Args:
+            parameter_names: a parameter name or a list of parameter names to
+                             unfreeze.
+        """
         if hasattr(parameter_names, '__iter__'):
             for p in parameter_names:
                 self._frozen.remove(p)
         else:
             self._frozen.remove(parameter_name)
 
-    def gui(self, x, fft = False, tform = lambda z : z, persistent_signals = [],
-            **callkwargs):
+    def gui(self, x, data=[], transforms=default_transforms, **mpl_kwargs):
         """ construct a gui for the parameter space evaluated over x
 
         Args:
-            x:          an iterable to evaluate self over (i.e. the x axis)
-            fft:        if True, plot the fft of the signal
-            persistent_signals:
-                        a list of Signal1D objects that will be plotted in addtion
-                        to self
-            tform:      a transformation to apply to the signal before plotting
-            callkwargs: **kwargs for self.__call__
+            x:          an iterable to evaluate the model over.
+            data:       a list of signals that will be plotted in addtion
+                        to self.
+            transforms: a dictionary of named transformations that may be
+                        applied to data and self. the plot will include a set of
+                        check boxes allowing the user to select between
+                        transforms. a default set of transforms is provided.
+                        setting this to {} will not transform self or data and
+                        no radio buttons will be generated.
+            mpl_kwargs: **kwargs that will be passed to plt.plot.
+
+        Returns:
+            sliders:    So they don't get garbage collected and the gui doesn't
+                        freeze.
+            radio_btns: Again to avoid garbage collection. radio_btns are not
+                        returned if transforms == {}.
         """
-        self.reset_gui() # clear internal state
+        self.reset_gui()
 
-        fig, (ax1, ax2) = plt.subplots(nrows = 2)
+        if len(transforms) == 0:
+            transforms = {'identity': lambda z : z}
+        key = next(iter(transforms))
 
-        # plot any persistent signals
-        plt.sca(ax1)
-        psigs = []
-        for sigma in persistent_signals:
-            if fft:
-                sigma = sigma.fft()
-            psigs.append((sigma, sigma.plot(style = self._gui_style)))
+        fig, (ax1, ax2) = plt.subplots(nrows=2)
+
+        # plot any provided data
+        signals = []
+        for sigma in data:
+            trace = transforms[key](sigma)
+            line, = ax1.plot(_retrieve_x(sigma), trace, **mpl_kwargs)
+            signals += [(sigma, line)]
 
         # add the parametric model to the plot and construct the sliders
-        self.add_to_axes(ax1, x, self._gui_style, tform = tform, fft = fft,
-                         **callkwargs)
-        sliders = self.construct_sliders(fig, ax2, x, fft = fft, **callkwargs)
+        self.add_to_current_axis(x, ax1, tform=transforms[key], **mpl_kwargs)
+        sliders = self.construct_sliders(fig, ax2, x)
 
-        # create radio buttons to allow user to switch between plotting styles
+        # if there is only one defined transform, don't bother with the buttons
+        if key == 'identity':
+            fig.tight_layout()
+            plt.show()
+            return sliders
+
+        # create radio buttons to allow user to switch between transforms
         divider = make_axes_locatable(ax1)
         rax = divider.append_axes("right", size = "15%", pad = .1)
-        idx = list(plotting_styles.keys()).index(self._gui_style)
-
-        radio = RadioButtons(rax, plotting_styles.keys(), active = idx)
+        radio = RadioButtons(rax, transforms.keys(), active=0)
 
         def radio_update(key):
-            self._gui_style = key
-
+            # update the parametric trace and its transform
             axtop, tform, line = self._parametric_traces[0]
-            axtop.set_ylabel(self._gui_style)
+            axtop.set_ylabel(key)
+            line.set_ydata(transforms[key](self(x)))
+            self._parametric_traces[0] = (axtop, transforms[key], line)
 
-            trace = tform(self(x, **callkwargs))
-            if fft:
-                trace = trace.fft()
-
-            line.set_ydata(plotting_styles[self._gui_style](trace))
-
-            for sigma, line in psigs:
-                line.set_ydata(plotting_styles[self._gui_style](sigma))
+            for sigma, line in signals:
+                line.set_ydata(transforms[key](sigma))
 
             axtop.relim()
             axtop.autoscale_view()
@@ -390,86 +373,54 @@ class Parametric1D(object):
         return sliders, radio
 
     def reset_gui(self):
-        """ resets internal state variables governing any gui """
-        self._parametric_traces = []
-        self._gui_style = 'real'
+         """ resets internal state variables governing gui environments """
+         self._parametric_traces = []
 
-    def add_to_axes(self, ax, x, style, tform = lambda z : z, fft = False,
-                    **callkwargs):
-        """ adds parameteric plot to axes 'ax' in 'style' and registers update rule
+    def add_to_current_axis(self, x, ax, tform=lambda z : z, **mpl_kwargs):
+        """ adds parameteric plot to axes 'ax' and registers update rule
 
         Args:
-            x:          an iterable to evaluate self over (i.e. the x axis)
-            ax:         matplotlib Axis object to plot the data on
-            style:      plotting style as defined in Signal1D
-            tform:      a transformation to apply to the signal before plotting
-            fft:        if True, plot the fft of the signal
-            callkwargs: **kwargs for self.__call__
+            x:          an iterable to evaluate self over (i.e. the x axis).
+            ax:         the axis object to plot the data on.
+            tform:      a transformation to apply to the signal before plotting.
+            mpl_kwargs: **kwargs for plt.plot.
         """
-        plt.sca(ax)
-        trace = self(x, **callkwargs)
-        if fft:
-            trace = trace.fft()
-        self._parametric_traces.append((ax, tform, tform(trace).plot(style = style)))
+        line, = ax.plot(x, tform(self(x)), **mpl_kwargs)
+        self._parametric_traces.append((ax, tform, line))
 
-    def construct_sliders(self, fig, ax, x, fft = False, **callkwargs):
-        """ add parameter sliders to ax. all axes to be update must be predefined
+    def construct_sliders(self, fig, ax, x, N=500):
+        """ replace ax with parameter sliders. dynamic axes must be predefined
 
         Args:
-            fig:        Figure object for subplots
-            ax:         Axes object to replace with Sliders
-            x:          an iterable to evaluate self over (i.e. the x axis)
-            fft:        if True, plot the fft of the signal
-            callkwargs: **kwargs for self.__call__
+            fig:        Figure object for subplots.
+            ax:         Axes object to replace with Sliders.
+            x:          an iterable to evaluate self over (i.e. the x axis).
+            N:          the resolution of the sliders.
 
         Returns:
             sliders:    within a function, the user must keep a reference to the
                         sliders, or they will be garbage collected and the
-                        associated gui will freeze
+                        associated gui will freeze.
         """
         divider = make_axes_locatable(ax)
 
         sl = {}
-        for i, (p, y) in enumerate(self.v.items()):
-            if p in self._frozen:
-                continue
-
+        for i, key in enumerate(key for key in self.v if key not in self._frozen):
             if i == 0:
                 subax = ax
             else:
                 subax = divider.append_axes("bottom", size = "100%", pad = .1)
-            lo, hi = self.v._l[p], self.v._u[p]
-            if hasattr(self.v[p], 'to_base_units'):
-                lo = self.v._l[p].to(y.units).magnitude
-                hi = self.v._u[p].to(y.units).magnitude
-                y0 = y.magnitude
-                txt = f"{p} + ({str(y.units)})"
-            else:
-                lo = self.v._l[p]
-                hi = self.v._u[p]
-                y0 = y
-                txt = p
 
-            step = (hi - lo)/500
-            sl[p] = Slider(subax, txt, lo, hi, valinit = y0, valstep = step)
+            lo, hi = self.v._l[key], self.v._u[key]
+            step = (hi - lo)/N
+            sl[key] = Slider(subax, key, lo, hi, valinit=self.v[key], valstep=step)
 
         def update(event):
-            for p in self.v:
-                if p in self._frozen:
-                    continue
-                if hasattr(self.v[p], 'units'):
-                    self.v[p] = sl[p].val*self.v[p].units
-                else:
-                    self.v[p] = sl[p].val
-
-            for ax2, tform, line in self._parametric_traces:
-                trace = tform(self(x, **callkwargs))
-                if fft:
-                    trace = trace.fft()
-
-                line.set_ydata(plotting_styles[self._gui_style](trace))
-                ax2.relim()
-                ax2.autoscale_view()
+            for axis, tform, line in self._parametric_traces:
+                trace = tform(self(x, parameters={key: sl[key].val for key in sl}))
+                line.set_ydata(trace)
+                axis.relim()
+                axis.autoscale_view()
 
             fig.canvas.draw_idle()
 
