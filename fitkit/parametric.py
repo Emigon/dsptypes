@@ -204,9 +204,9 @@ class Parametric1D(object):
 
     def default_errf(v, self, sigma, metric):
         try:
-            for i, key in enuemerate(key for key in self.v if key not in self._frozen):
+            for i, key in enumerate(key for key in self.v if key not in self._frozen):
                 self.v.set(key, v[i], clip=False)
-        except:
+        except ValueError:
             warnings.warn('optimizer attempted to set parameter outside of bounds')
             return float('inf')
 
