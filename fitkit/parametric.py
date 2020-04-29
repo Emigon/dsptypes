@@ -280,11 +280,13 @@ class Parametric1D(object):
             parameter_names: a parameter name or a list of parameter names to
                              freeze.
         """
-        if hasattr(parameter_names, '__iter__'):
+        if isinstance(parameter_names, list):
             for p in parameter_names:
-                self._frozen.append(p)
+                if p not in self._frozen:
+                    self._frozen.append(p)
         else:
-            self._frozen.append(parameter_name)
+            if parameter_names not in self._frozen:
+                self._frozen.append(parameter_names)
 
     def unfreeze(self, parameter_names):
         """ unfreeze parameters that have been frozen
@@ -293,11 +295,13 @@ class Parametric1D(object):
             parameter_names: a parameter name or a list of parameter names to
                              unfreeze.
         """
-        if hasattr(parameter_names, '__iter__'):
+        if isinstance(parameter_names, list):
             for p in parameter_names:
-                self._frozen.remove(p)
+                if p in self._frozen:
+                    self._frozen.remove(p)
         else:
-            self._frozen.remove(parameter_name)
+            if parameter_names in self._frozen:
+                self._frozen.remove(parameter_names)
 
     def gui(self, x, data=[], transforms=default_transforms, **mpl_kwargs):
         """ construct a gui for the parameter space evaluated over x
