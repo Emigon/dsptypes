@@ -191,6 +191,23 @@ class Parametric1D(object):
             return Parametric1D(self.expr / other, params)
     # }}}
 
+    def __repr__(self):
+        str = [
+            'Parametric1D object',
+            'expr:',
+            '    %s' % self.expr,
+            '',
+            'parameters:',
+            '    name     value        bounds',
+            '    ------------------------------------------------',
+        ]
+
+        for p in self.v:
+            str += ['    {0} {1:+.4e}  ({2:+.4e}, {3:+.4e})'
+                    .format(p.ljust(8), self.v[p], self.v._l[p], self.v._u[p])]
+
+        return '\n'.join(str)
+    
     @_typefactory
     def __call__(self, x, parameters={}, clip=False):
         """ evaluate the parametric expression over x for the current parameter values """
