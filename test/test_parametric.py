@@ -76,21 +76,21 @@ def test_parameter_loading(model):
 
     pm = Parametric1D(*model.values())
     for k in model['params']:
-        assert pm.v[k] == model['params'][k][1]
-        assert pm.v._l[k] == model['params'][k][0]
-        assert pm.v._u[k] == model['params'][k][2]
+        assert pm[k] == model['params'][k][1]
+        assert pm._l[k] == model['params'][k][0]
+        assert pm._u[k] == model['params'][k][2]
 
 def test_parameter_modification(model):
     pm = Parametric1D(*model.values())
-    pm.v['alpha'] = 1
-    assert pm.v['alpha'] == 1
+    pm['alpha'] = 1
+    assert pm['alpha'] == 1
 
     # try to set tau outside of the specified ranges. should raise an error
     with pytest.raises(Exception) as e_info:
-        pm.v['tau'] = -1
+        pm['tau'] = -1
 
     with pytest.raises(Exception) as e_info:
-        pm.v['tau'] = 6
+        pm['tau'] = 6
 
 def test_call(model):
     pm = Parametric1D(*model.values(), call_type=np.float64)
@@ -112,7 +112,7 @@ def test_arithmetic_between_Pm1Ds(model, model2):
 
     for pm in [pm3, pm4, pm5]:
         for sym in [alpha, beta, gamma, tau]:
-            assert sym.name in pm.v
+            assert sym.name in pm
             assert sym in pm.expr.free_symbols
 
     # test overloading one of the parameters with arithmetic
@@ -122,8 +122,8 @@ def test_arithmetic_between_Pm1Ds(model, model2):
     with pytest.warns(UserWarning):
         pm6 = pm1*Parametric1D(*model3.values())
 
-    assert pm6.v._l['alpha'] == 1
-    assert pm6.v._u['alpha'] == 3
+    assert pm6._l['alpha'] == 1
+    assert pm6._u['alpha'] == 3
 
 def test_fitshgo(model, sinusoid):
     pm = Parametric1D(*model.values(), call_type=type(sinusoid))
@@ -132,7 +132,7 @@ def test_fitshgo(model, sinusoid):
 
     for key in table:
         assert key in ['parameters', 'fitted', 'opt_result']
-    assert type(table['parameters']) == ParameterDict
+    assert type(table['parameters']) == Parametric1D
     assert type(table['fitted']) == pm._call_type
 
 def test_eval_at_points():

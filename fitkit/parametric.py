@@ -31,47 +31,6 @@ default_transforms = {
     'deg':  lambda z: np.angle(z, deg=True),
 }
 
-class ParameterDict(MutableMapping):
-    def __init__(self, params):
-        self.store = dict([(k, v[1]) for k, v in params.items()])
-        self._l = {k: params[k][0] for k in params}
-        self._u = {k: params[k][2] for k in params}
-
-    def __getitem__(self, key):
-        return self.store[key]
-
-    def __setitem__(self, key, value):
-        if key not in self.store:
-            raise RuntimeError(f'cannot add new keys to {type(self)}')
-
-        if not(self._l[key] <= value <= self._u[key]):
-            raise ValueError("parameter value must be between " + \
-                                f"{self._l[key]} and {self._u[key]}")
-        self.store[key] = value
-
-    def set(self, key, value, clip=False):
-        if not(clip):
-            self[key] = value
-        else:
-            if self._l[key] > value:
-                self[key] = self._l[key]
-            elif self._u[key] < value:
-                self[key] = self._u[key]
-            else:
-                self[key] = value
-
-    def __delitem__(self, key):
-        del self.store[key]
-
-    def __iter__(self):
-        return iter(self.store)
-
-    def __len__(self):
-        return len(self.store)
-
-    def __keytransform__(self, key):
-        return key
-
 class Parametric1D(object):
     def __init__(self, expr, params, call_type=np.complex128):
         """ Parametric1D
@@ -120,13 +79,50 @@ class Parametric1D(object):
             if not(params[k][0] <= params[k][1] <= params[k][2]):
                 raise ValueError(f'params item {params[k]} must be ascending')
 
-        self.v = ParameterDict(params)
+        self._store = dict([(k, v[1]) for k, v in params.items()])
+        self._l = {k: params[k][0] for k in params}
+        self._u = {k: params[k][2] for k in params}
+
+        self.f = sympy.lambdify([k for k in self] + [self._free_var], self._expr)
+
         self._frozen = []
 
-        parameters = [k for k in self.v]
-        self.f = sympy.lambdify(parameters + [self._free_var], self._expr)
-
         self._parametric_traces = []
+
+    def __getitem__(self, key):
+        return self._store[key]
+
+    def __setitem__(self, key, value):
+        if key not in self._store:
+            raise RuntimeError(f'cannot add new keys to {type(self)}')
+
+        if not(self._l[key] <= value <= self._u[key]):
+            raise ValueError("parameter value must be between " + \
+                                f"{self._l[key]} and {self._u[key]}")
+        self._store[key] = value
+
+    def set(self, key, value, clip=False):
+        if not(clip):
+            self[key] = value
+        else:
+            if self._l[key] > value:
+                self[key] = self._l[key]
+            elif self._u[key] < value:
+                self[key] = self._u[key]
+            else:
+                self[key] = value
+
+    def __delitem__(self, key):
+        del self._store[key]
+
+    def __iter__(self):
+        return iter(self._store)
+
+    def __len__(self):
+        return len(self._store)
+
+    def __keytransform__(self, key):
+        return key
 
     @property
     def expr(self):
@@ -135,17 +131,17 @@ class Parametric1D(object):
 
     # {{{ define arithmetic with multiple Parametric1D objects
     def _combine_parameters(self, other):
-        params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
-        for k in other.v:
+        params = {k: (self._l[k], self[k], self._u[k]) for k in self}
+        for k in other:
             if k in params:
                 # take the intersection of the lower and upper bounds
                 warnings.warn('taking intersection of common parameter bounds')
-                lower = max([params[k][0], other.v._l[k]])
-                upper = min([params[k][2], other.v._u[k]])
+                lower = max([params[k][0], other._l[k]])
+                upper = min([params[k][2], other._u[k]])
                 # force the setpoint to lie halfway between the parameter range
                 setpoint = (upper - lower)/2
                 params[k] = setpoint
-            params[k] = (other.v._l[k], other.v[k], other.v._u[k])
+            params[k] = (other._l[k], other[k], other._u[k])
 
         return params
 
@@ -154,7 +150,7 @@ class Parametric1D(object):
             return Parametric1D(self.expr + other.expr, self._combine_parameters(other))
         else:
             # try using sympy to apply arithmetic to expression
-            params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
+            params = {k: (self._l[k], self[k], self._u[k]) for k in self}
             return Parametric1D(self.expr + other, params)
 
     def __radd__(self, other):
@@ -165,7 +161,7 @@ class Parametric1D(object):
             return Parametric1D(self.expr - other.expr, self._combine_parameters(other))
         else:
             # try using sympy to apply arithmetic to expression
-            params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
+            params = {k: (self._l[k], self[k], self._u[k]) for k in self}
             return Parametric1D(self.expr - other, params)
 
     def __rsub__(self, other):
@@ -176,7 +172,7 @@ class Parametric1D(object):
             return Parametric1D(self.expr * other.expr, self._combine_parameters(other))
         else:
             # try using sympy to apply arithmetic to expression
-            params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
+            params = {k: (self._l[k], self[k], self._u[k]) for k in self}
             return Parametric1D(self.expr*other, params)
 
     def __rmul__(self, other):
@@ -187,7 +183,7 @@ class Parametric1D(object):
             return Parametric1D(self.expr / other.expr, self._combine_parameters(other))
         else:
             # try using sympy to apply arithmetic to expression
-            params = {k: (self.v._l[k], self.v[k], self.v._u[k]) for k in self.v}
+            params = {k: (self._l[k], self[k], self._u[k]) for k in self}
             return Parametric1D(self.expr / other, params)
     # }}}
 
@@ -202,9 +198,9 @@ class Parametric1D(object):
             '    ------------------------------------------------',
         ]
 
-        for p in self.v:
+        for p in self:
             str += ['    {0} {1:+.4e}  ({2:+.4e}, {3:+.4e})'
-                    .format(p.ljust(8), self.v[p], self.v._l[p], self.v._u[p])]
+                    .format(p.ljust(8), self[p], self._l[p], self._u[p])]
 
         return '\n'.join(str)
     
@@ -212,8 +208,8 @@ class Parametric1D(object):
     def __call__(self, x, parameters={}, clip=False):
         """ evaluate the parametric expression over x for the current parameter values """
         for key, val in parameters.items():
-            self.v.set(key, val, clip=clip)
-        parameter_values = [self.v[k] for k in self.v]
+            self.set(key, val, clip=clip)
+        parameter_values = [self[k] for k in self]
         if hasattr(x, '__iter__'):
             return [self.f(*parameter_values, pt) for pt in x]
         else:
@@ -221,13 +217,13 @@ class Parametric1D(object):
 
     def default_errf(v, self, sigma, metric):
         try:
-            for i, key in enumerate(key for key in self.v if key not in self._frozen):
-                self.v.set(key, v[i], clip=False)
+            for i, key in enumerate(key for key in self if key not in self._frozen):
+                self.set(key, v[i], clip=False)
         except ValueError:
             warnings.warn('optimizer attempted to set parameter outside of bounds')
             return float('inf')
 
-        return metric(self(_retrieve_x(sigma)), sigma)
+        return np.real(metric(self(_retrieve_x(sigma)), sigma))
 
     def default_metric(sigma1, sigma2):
         return sum((y1 - y2)**2 for y1, y2 in zip(sigma1, sigma2))
@@ -269,8 +265,8 @@ class Parametric1D(object):
             'dual_annealing':           spopt.dual_annealing,
         }
 
-        x0 = [self.v[k] for k in self.v if k not in self._frozen]
-        b  = [(self.v._l[k], self.v._u[k]) for k in self.v if k not in self._frozen]
+        x0 = [self[k] for k in self if k not in self._frozen]
+        b  = [(self._l[k], self._u[k]) for k in self if k not in self._frozen]
 
         args = (self, sigma, metric)
         if method in global_methods:
@@ -282,11 +278,11 @@ class Parametric1D(object):
             raise RuntimeError('Optimization failed to explore parameter space')
 
         # the last iteration isn't necessarily the global minimum so we set it here
-        for i, key in enumerate(key for key in self.v if key not in self._frozen):
-            self.v.set(key, opt_result.x[i], clip=True)
+        for i, key in enumerate(key for key in self if key not in self._frozen):
+            self.set(key, opt_result.x[i], clip=True)
 
         return {
-            'parameters':   deepcopy(self.v),
+            'parameters':   deepcopy(self),
             'fitted':       sigma,
             'opt_result':   opt_result,
         }
@@ -426,15 +422,15 @@ class Parametric1D(object):
         divider = make_axes_locatable(ax)
 
         sl = {}
-        for i, key in enumerate(key for key in self.v if key not in self._frozen):
+        for i, key in enumerate(key for key in self if key not in self._frozen):
             if i == 0:
                 subax = ax
             else:
                 subax = divider.append_axes("bottom", size = "100%", pad = .1)
 
-            lo, hi = self.v._l[key], self.v._u[key]
+            lo, hi = self._l[key], self._u[key]
             step = (hi - lo)/N
-            sl[key] = Slider(subax, key, lo, hi, valinit=self.v[key], valstep=step)
+            sl[key] = Slider(subax, key, lo, hi, valinit=self[key], valstep=step)
 
         def update(event):
             for axis, tform, line in self._parametric_traces:
