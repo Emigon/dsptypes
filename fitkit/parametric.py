@@ -101,7 +101,12 @@ class Parametric1D(object):
                                 f"{self._l[key]} and {self._u[key]}")
         self._store[key] = value
 
-    def set(self, key, value, clip=False):
+    def set(self, key, value, clip=False, lower=None, upper=None):
+        if lower is not None:
+            self._l[key] = lower
+        if upper is not None:
+            self._u[key] = upper
+
         if not(clip):
             self[key] = value
         else:
