@@ -302,6 +302,8 @@ class Parametric1D(MutableMapping):
             for p in parameter_names:
                 if p not in self._frozen:
                     self._frozen.append(p)
+        elif parameter_names == '*':
+            self._frozen = [p for p in self] # add all parameters with glob
         else:
             if parameter_names not in self._frozen:
                 self._frozen.append(parameter_names)
@@ -317,6 +319,8 @@ class Parametric1D(MutableMapping):
             for p in parameter_names:
                 if p in self._frozen:
                     self._frozen.remove(p)
+        elif parameter_names == '*':
+            self._frozen = [] # remove all parameters with glob
         else:
             if parameter_names in self._frozen:
                 self._frozen.remove(parameter_names)
