@@ -196,7 +196,7 @@ class Parametric1D(MutableMapping):
         str = [
             'Parametric1D object',
             'expr:',
-            '    %s' % self.expr,
+            '%s' % sympy.pretty(self.expr),
             '',
             'parameters:',
             '    name     value        bounds',
