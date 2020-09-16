@@ -17,7 +17,7 @@ def _typefactory(call_method):
             return self._call_type(output,
                                    coords={'x': x},
                                    dims='x',
-                                   attrs={k: v for k, v in self.v.items()})
+                                   attrs={k: self[k] for k in self})
         else:
             return self._call_type(output)
 

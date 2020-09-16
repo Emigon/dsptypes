@@ -31,7 +31,7 @@ default_transforms = {
     'deg':  lambda z: np.angle(z, deg=True),
 }
 
-class Parametric1D(object):
+class Parametric1D(MutableMapping):
     def __init__(self, expr, params, call_type=np.complex128):
         """ Parametric1D
         Args:
@@ -208,7 +208,7 @@ class Parametric1D(object):
                     .format(p.ljust(8), self[p], self._l[p], self._u[p])]
 
         return '\n'.join(str)
-    
+
     @_typefactory
     def __call__(self, x, parameters={}, clip=False):
         """ evaluate the parametric expression over x for the current parameter values """
@@ -287,7 +287,7 @@ class Parametric1D(object):
             self.set(key, opt_result.x[i], clip=True)
 
         return {
-            'parameters':   deepcopy(self),
+            'parameters':   {k: self[k] for k in self},
             'fitted':       sigma,
             'opt_result':   opt_result,
         }
