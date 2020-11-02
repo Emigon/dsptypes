@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='fitkit',
-      version='0.1.1',
+      version='0.2.0',
       description='Python methods and objects for fitting functions to data',
       url='https://github.com/Emigon/fitkit',
       author='Daniel Parker',
