@@ -132,7 +132,7 @@ def test_fitshgo(model, sinusoid):
 
     for key in table:
         assert key in ['parameters', 'fitted', 'opt_result']
-    assert type(table['parameters']) == Parametric1D
+    assert type(table['parameters']) == dict
     assert type(table['fitted']) == pm._call_type
 
 def test_eval_at_points():
