@@ -147,11 +147,11 @@ def test_eval_at_points():
 @pytest.mark.plot
 def test_gui(model, sinusoid):
     pm = Parametric1D(*model.values(), call_type=pd.Series)
-    sl = pm.gui(sinusoid.index, data=[sinusoid])
+    pm.gui(sinusoid.index, data=[sinusoid])
 
 @pytest.mark.plot
 def test_fit(model, sinusoid):
     pm = Parametric1D(*model.values())
     shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
     opt_result = pm.fit(sinusoid, 'shgo', opts = shgo_opts)
-    sl, rd = pm.gui(sinusoid.index, data=[sinusoid])
+    pm.gui(sinusoid.index, data=[sinusoid])

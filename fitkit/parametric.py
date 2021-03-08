@@ -20,16 +20,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.widgets import Slider, RadioButtons
 
 from .call_types import _typefactory, _retrieve_x
-
-default_transforms = {
-    'real': lambda z: np.real(z),
-    'imag': lambda z: np.imag(z),
-    'abs':  lambda z: np.abs(z),
-    'dB':   lambda z: 20*np.log10(np.abs(z)),
-    'dBm':  lambda z: 10*np.log10(np.abs(z)) + 30,
-    'rad':  lambda z: np.angle(z, deg=False),
-    'deg':  lambda z: np.angle(z, deg=True),
-}
+from .gui import *
 
 class Parametric1D(MutableMapping):
     def __init__(self, expr, params, call_type=np.complex128):
@@ -326,7 +317,12 @@ class Parametric1D(MutableMapping):
             if parameter_names in self._frozen:
                 self._frozen.remove(parameter_names)
 
-    def gui(self, x, data=[], transforms=default_transforms, **mpl_kwargs):
+    def gui(self,
+            x,
+            data=[],
+            transforms=None,
+            parameter_resolution=100,
+            savefig_dir=None):
         """ construct a gui for the parameter space evaluated over x
 
         Args:
@@ -337,121 +333,23 @@ class Parametric1D(MutableMapping):
                         applied to data and self. the plot will include a set of
                         check boxes allowing the user to select between
                         transforms. a default set of transforms is provided.
-                        setting this to {} will not transform self or data and
-                        no radio buttons will be generated.
-            mpl_kwargs: **kwargs that will be passed to plt.plot.
-
-        Returns:
-            sliders:    So they don't get garbage collected and the gui doesn't
-                        freeze.
-            radio_btns: Again to avoid garbage collection. radio_btns are not
-                        returned if transforms == {}.
+                        setting this to None will not transform self or data and
+                        no radio buttons will be generated unless the data is 
+                        complex. In this case a default set of ['real', 'imag',
+                        'abs', 'ang'] are provided.
+            parameter_resolution:
+                        the resolution of the sliders. the finer the resolution 
+                        the smoother the control you have, but this may come at 
+                        the expense of performance as the function is evaluated 
+                        at every point the slider crosses.
+            savefig_dir:
+                        the directory to save an image of the current gui state 
+                        when the user presses the 'save' button. defaults to 
+                        None, disabling screenshots of the current layout.
         """
-        self.reset_gui()
-
-        if len(transforms) == 0:
-            transforms = {'identity': lambda z : z}
-        key = next(iter(transforms))
-
-        fig, (ax1, ax2) = plt.subplots(nrows=2)
-
-        # plot any provided data
-        signals = []
-        for sigma in data:
-            trace = transforms[key](sigma)
-            line, = ax1.plot(_retrieve_x(sigma), trace, **mpl_kwargs)
-            signals += [(sigma, line)]
-
-        # add the parametric model to the plot and construct the sliders
-        self.add_to_current_axis(x, ax1, tform=transforms[key], **mpl_kwargs)
-        sliders = self.construct_sliders(fig, ax2, x)
-
-        # if there is only one defined transform, don't bother with the buttons
-        if key == 'identity':
-            fig.tight_layout()
-            plt.show()
-            return sliders
-
-        # create radio buttons to allow user to switch between transforms
-        divider = make_axes_locatable(ax1)
-        rax = divider.append_axes("right", size = "15%", pad = .1)
-        radio = RadioButtons(rax, transforms.keys(), active=0)
-
-        def radio_update(key):
-            # update the parametric trace and its transform
-            axtop, tform, line = self._parametric_traces[0]
-            axtop.set_ylabel(key)
-            line.set_ydata(transforms[key](self(x)))
-            self._parametric_traces[0] = (axtop, transforms[key], line)
-
-            for sigma, line in signals:
-                line.set_ydata(transforms[key](sigma))
-
-            axtop.relim()
-            axtop.autoscale_view()
-
-            fig.canvas.draw_idle()
-
-        radio.on_clicked(radio_update)
-
-        fig.tight_layout()
-        plt.show()
-
-        return sliders, radio
-
-    def reset_gui(self):
-         """ resets internal state variables governing gui environments """
-         self._parametric_traces = []
-
-    def add_to_current_axis(self, x, ax, tform=lambda z : z, **mpl_kwargs):
-        """ adds parameteric plot to axes 'ax' and registers update rule
-
-        Args:
-            x:          an iterable to evaluate self over (i.e. the x axis).
-            ax:         the axis object to plot the data on.
-            tform:      a transformation to apply to the signal before plotting.
-            mpl_kwargs: **kwargs for plt.plot.
-        """
-        line, = ax.plot(x, tform(self(x)), **mpl_kwargs)
-        self._parametric_traces.append((ax, tform, line))
-
-    def construct_sliders(self, fig, ax, x, N=500):
-        """ replace ax with parameter sliders. dynamic axes must be predefined
-
-        Args:
-            fig:        Figure object for subplots.
-            ax:         Axes object to replace with Sliders.
-            x:          an iterable to evaluate self over (i.e. the x axis).
-            N:          the resolution of the sliders.
-
-        Returns:
-            sliders:    within a function, the user must keep a reference to the
-                        sliders, or they will be garbage collected and the
-                        associated gui will freeze.
-        """
-        divider = make_axes_locatable(ax)
-
-        sl = {}
-        for i, key in enumerate(key for key in self if key not in self._frozen):
-            if i == 0:
-                subax = ax
-            else:
-                subax = divider.append_axes("bottom", size = "100%", pad = .1)
-
-            lo, hi = self._l[key], self._u[key]
-            step = (hi - lo)/N
-            sl[key] = Slider(subax, key, lo, hi, valinit=self[key], valstep=step)
-
-        def update(event):
-            for axis, tform, line in self._parametric_traces:
-                trace = tform(self(x, parameters={key: sl[key].val for key in sl}))
-                line.set_ydata(trace)
-                axis.relim()
-                axis.autoscale_view()
-
-            fig.canvas.draw_idle()
-
-        for slider in sl.values():
-            slider.on_changed(update)
-
-        return sl
+        gui = Gui(parameter_resolution=parameter_resolution)
+        ax = gui.register_model(self, x)
+        for trace in data:
+            gui.register_data(trace, axis=ax)
+        gui.show(transforms=transforms, savefig_dir=savefig_dir)
+        plt.close()
