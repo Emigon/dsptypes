@@ -7,6 +7,8 @@ and datasets to present, this class will display an interactive GUI whereby the
 user can manually tune in parameter values to fit a given dataset.
 """
 
+import warnings
+
 from time import sleep
 from os import path
 from functools import partial
@@ -77,10 +79,8 @@ class Gui(object):
                 ax2 = self._btns_divider.append_axes("bottom", size="100%", pad=.5)
                 self._axes.append(ax1)
                 self._ax_btns.append(ax2)
-            line, = self._axes[-1].plot(x, np.real(pm(x)), **plot_kwargs)
-        else:
-            line, = axis.plot(x, np.real(pm(x)), **plot_kwargs)
 
+        p0_on_grid = {}
         for param in pm:
             all_frozen = pm._frozen + \
                          [p for _, mod, _, _ in self._models for p in mod._frozen]
@@ -113,9 +113,27 @@ class Gui(object):
             step = (hi - lo)/self._parameter_resolution
             init = np.log10(pm[param]) if param in self._log_parameters else pm[param]
 
+            # round to the slider grid
+            grid = np.arange(lo, hi, step)
+            idx = np.argmin(np.abs(grid - init))
+            p0_on_grid[param] = grid[idx]
+
+            # warn the user if the rounding is > 1% of the parameter range
+            if np.abs(p0_on_grid[param] - init) > 0.01*(hi - lo):
+                warnings.warn(f'rounding of {param} to slider grid error > 1%')
+
             # store Slider (args, kwargs) for slider generation in self.show()
             self._sldrs[param] = ((self._ax_sldr[param], txt, lo, hi),
-                                  {'valinit': init, 'valstep': step, 'valfmt': '%.3e'})
+                                  {'valinit': p0_on_grid[param], 'valstep': step, 'valfmt': '%.3e'})
+
+        for p in self._log_parameters:
+            p0_on_grid[p] = 10**p0_on_grid[p]
+
+        y0 = np.real(pm(x, parameters=p0_on_grid))
+        if axis is None:
+            line, = self._axes[-1].plot(x, y0, **plot_kwargs)
+        else:
+            line, = axis.plot(x, y0, **plot_kwargs)
 
         ax = self._axes[-1] if axis is None else axis
         self._models.append((x, pm, line, ax))

@@ -29,7 +29,7 @@ def models_and_data():
 def test_gui_one_model(models_and_data):
     pm1, pm2, sigma1, sigma2 = models_and_data
 
-    gui = Gui(parameter_resolution=10)
+    gui = Gui(parameter_resolution=100)
     ax = gui.register_model(pm1, sigma1.index, color='r')
     gui.register_data(sigma1, axis=ax, color='b')
     ax.set_title('One model')
@@ -39,7 +39,7 @@ def test_gui_one_model(models_and_data):
 def test_transforms(models_and_data):
     pm1, pm2, sigma1, sigma2 = models_and_data
 
-    gui = Gui(parameter_resolution=10)
+    gui = Gui(parameter_resolution=100)
     ax1 = gui.register_model(pm1, sigma1.index, color='r')
     gui.register_data(sigma1, axis=ax1, color='b')
 
@@ -60,7 +60,7 @@ def test_transforms(models_and_data):
 def test_gui_two_model(models_and_data):
     pm1, pm2, sigma1, sigma2 = models_and_data
 
-    gui = Gui(parameter_resolution=10, log_parameters=['tau'])
+    gui = Gui(parameter_resolution=100, log_parameters=['tau'])
     ax1 = gui.register_model(pm1, sigma1.index, color='r')
     gui.register_data(sigma1, axis=ax1, color='b')
 
@@ -74,7 +74,7 @@ def test_gui_two_model(models_and_data):
 def test_gui_two_model_one_plot(models_and_data):
     pm1, pm2, sigma1, sigma2 = models_and_data
 
-    gui = Gui(parameter_resolution=10)
+    gui = Gui(parameter_resolution=100)
     ax = gui.register_model(pm1, sigma1.index, color='r')
     gui.register_model(pm2, sigma1.index, axis=ax, color='g')
     gui.register_data(sigma1, axis=ax, color='b')
@@ -87,7 +87,7 @@ def test_gui_two_model_one_plot(models_and_data):
 def test_gui_reset(models_and_data):
     pm1, pm2, sigma1, sigma2 = models_and_data
 
-    gui = Gui(parameter_resolution=10)
+    gui = Gui(parameter_resolution=100)
     ax1 = gui.register_model(pm1, sigma1.index, color='r')
     gui.register_data(sigma1, axis=ax1, color='b')
 
