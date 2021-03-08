@@ -244,25 +244,26 @@ class Parametric1D(MutableMapping):
         Args:
             sigma:      the input signal to fit.
             method:     see scipy.minimize for local optimisation methods.
-                        otherwise global methods 'differential_evolution', 'shgo'
-                        and 'dual_annealing' are supported.
-            errf:       an error function that accepts the (v, self, sigma, tform)
-                        as arguments, where v is the ParameterDict associated with
-                        self. as in scipy this functions return type must be a
-                        real number.
+                        otherwise global methods 'differential_evolution', 
+                        'shgo and 'dual_annealing' are supported.
+            errf:       an error function that accepts (v, self, sigma, tform) 
+                        as arguments, where v is the ParameterDict associated 
+                        with self. as in scipy this functions return type must 
+                        be a real number.
             opts:       the keyword arguments to pass to scipy.minimize or the
-                        'dual_annealing', 'shgo' or 'differential_evolution' global
-                        optimizers.
+                        'dual_annealing', 'shgo' or 'differential_evolution' 
+                        global optimizers.
             metric:     a function of two signals (self.__call__(x), sigma) that
-                        returns a the value of the cost function. A sum of squares
-                        of the residual signal (self.__call__(x) - sigma) is
+                        returns a the value of the cost function. A sum of 
+                        squares of the residual signal (self(x) - sigma) is 
                         provided as a default.
+
         Returns:
             results:    a dictionary containg the ParameterDict associated
-                        with the optima, a copy of the signal that was fitted and
-                        the optimisation result metadata. some of this information
-                        is superfluous but assists in logging the fits to a large
-                        set of inputs.
+                        with the optima, a copy of the signal that was fitted 
+                        and the optimisation result metadata. some of this 
+                        information is superfluous but assists in logging the 
+                        fits to a large set of inputs.
         """
         global_methods = {
             'differential_evolution':   spopt.differential_evolution,

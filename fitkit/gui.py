@@ -60,8 +60,8 @@ class Gui(object):
                     that this function will insert a new axis below the top-most
                     axis.
             plot_kwargs:
-                    the kwargs to pass to matplotlib.pyplot.plot. used to customise
-                    linestyles, colors, etc...
+                    the kwargs to pass to matplotlib.pyplot.plot. used to 
+                    customise linestyles, colors, etc...
         Returns:
             axis:   the axis object that the data is plotted on.
         """
@@ -134,8 +134,8 @@ class Gui(object):
                     that this function will insert a new axis below the top-most
                     axis.
             plot_kwargs:
-                    the kwargs to pass to matplotlib.pyplot.plot. used to customise
-                    linestyles, colors, etc...
+                    the kwargs to pass to matplotlib.pyplot.plot. used to 
+                    customise linestyles, colors, etc...
         Returns:
             axis:   the axis object that the data is plotted on.
         """
@@ -229,9 +229,10 @@ class Gui(object):
         Args:
             transforms:
                 a list of dictionaries of transforms that will be independently
-                to each axis object. if more than one transform is specified then
-                a set of radio buttons will be provided to allow the user to
-                select between them. e.g. for two axis objects, you could have:
+                to each axis object. if more than one transform is specified 
+                then a set of radio buttons will be provided to allow the user 
+                to select between them. e.g. for two axis objects, you could 
+                have:
                     [{'real': np.real, 'imag': np.imag}, {'arg': np.angle}]
             savefig_dir:
                 the directory to save an image of the current gui state when the
