@@ -48,7 +48,7 @@ class Parametric1D(MutableMapping):
         """
         self._call_type = call_type
 
-        if not(isinstance(expr, tuple(sympy.core.all_classes))):
+        if not(isinstance(expr, sympy.core.Expr)):
             raise TypeError("expr must be a sympy expression")
 
         self._expr = expr
