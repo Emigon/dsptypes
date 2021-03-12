@@ -10,7 +10,7 @@ number of subsampled points to the original length of the data
 """
 
 import numpy as np
-from fitkit import Signal1D
+# from fitkit import Signal1D
 
 def decimate_by_derivative(sig1d, N, tform = lambda z : np.abs(z)):
     """ [EXPERIMENTAL] draws N random samples from sig1d about points of change
@@ -38,4 +38,4 @@ def decimate_by_derivative(sig1d, N, tform = lambda z : np.abs(z)):
     # NOTE: the last sample can never be chosen since probs is derrived from a diff
     idxs = np.random.choice(range(len(probs)), size = N, p = probs, replace = False)
     idxs.sort()
-    return Signal1D(sig1d.values[idxs], xraw = sig1d.x[idxs])
+    return 0 # Signal1D(sig1d.values[idxs], xraw = sig1d.x[idxs])

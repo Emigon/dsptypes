@@ -2,6 +2,7 @@ import pytest
 import matplotlib.pyplot as plt
 
 import sympy as sp
+import pandas as pd
 
 from fitkit import *
 
