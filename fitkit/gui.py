@@ -17,9 +17,10 @@ from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.widgets import Slider, Button, RadioButtons
+from matplotlib.widgets import AxesWidget, Slider, Button, RadioButtons
 
 from .call_types import _typefactory, _retrieve_x
+from .radio import HorzRadioButtons
 
 default_complex_transforms = {
     'real': lambda z: np.real(z),
@@ -305,7 +306,12 @@ class Gui(object):
                 buttons.append(None)
                 continue
 
-            buttons.append(RadioButtons(ax, transforms[i].keys(), active=0))
+            buttons.append(HorzRadioButtons(ax,
+                                            transforms[i].keys(),
+                                            active=0,
+                                            activecolor='crimson',
+                                            orientation='horizontal',
+                                            size=149))
             update_function = self._get_radio_update(self._axes[i], transforms[i])
             buttons[-1].on_clicked(update_function)
             update_function(buttons[-1].value_selected)
