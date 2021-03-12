@@ -233,7 +233,7 @@ class Gui(object):
 
         return radio_update
 
-    def save(self, button, savefig_dir, fmtname, sliders, event):
+    def _save(self, button, savefig_dir, fmtname, sliders, event):
         self._fig.canvas.draw_idle()
 
         button.label.set_text('↺') # unicode loading character
@@ -340,7 +340,7 @@ class Gui(object):
         save_button = Button(self._ax_save, f'Save')
         save_button.label.set_fontsize(12)
         save_button.on_clicked(
-            partial(Gui.save, self, save_button, savefig_dir, fmtname, sliders)
+            partial(Gui._save, self, save_button, savefig_dir, fmtname, sliders)
         )
 
         # display the gui
