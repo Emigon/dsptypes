@@ -75,8 +75,10 @@ class Gui(object):
         if axis is None:
             if len(self._models) >= 1 or len(self._data) >= 1:
                 # add a new axis to the body below the most recent body axis
-                ax1 = self._body_divider.append_axes("bottom", size="100%", pad=.5)
-                ax2 = self._btns_divider.append_axes("bottom", size="100%", pad=.5)
+                kwargs = {'size': '100%', 'pad': 1.0}
+                ax1 = self._body_divider.append_axes("right", **kwargs)
+                ax2 = self._btns_divider.append_axes("right", **kwargs)
+
                 self._axes.append(ax1)
                 self._ax_btns.append(ax2)
 
@@ -165,8 +167,10 @@ class Gui(object):
         if axis is None:
             if len(self._models) >= 1 or len(self._data) >= 1:
                 # add a new axis to the body below the most recent body axis
-                ax1 = self._body_divider.append_axes("bottom", size="100%", pad=.5)
-                ax2 = self._btns_divider.append_axes("bottom", size="100%", pad=.5)
+                kwargs = {'size': '100%', 'pad': 0.5}
+                ax1 = self._body_divider.append_axes("right", **kwargs)
+                ax2 = self._btns_divider.append_axes("right", **kwargs)
+
                 self._axes.append(ax1)
                 self._ax_btns.append(ax2)
             line, = self._axes[-1].plot(_retrieve_x(sigma), np.real(sigma), **plot_kwargs)
@@ -182,19 +186,22 @@ class Gui(object):
         # reset the plot state
         plt.close()
         self._fig = plt.figure(figsize=self._figsize)
-        gs = self._fig.add_gridspec(3, 2, width_ratios=[6, 1], height_ratios=[1,16,8])
+        gs = self._fig.add_gridspec(3,
+                                    2,
+                                    height_ratios=[16,1,8],
+                                    width_ratios=[11, 1])
 
-        self._ax_save = self._fig.add_subplot(gs[0,1])
-
-        self._axes = [self._fig.add_subplot(gs[1,0])]
+        self._axes = [self._fig.add_subplot(gs[0,:])]
         self._body_divider = make_axes_locatable(self._axes[0])
 
-        self._ax_btns = [self._fig.add_subplot(gs[1,1], aspect='equal')]
+        self._ax_btns = [self._fig.add_subplot(gs[1,:])]
         self._btns_divider = make_axes_locatable(self._ax_btns[0])
 
-        self._sldr_init = self._fig.add_subplot(gs[2,:])
+        self._sldr_init = self._fig.add_subplot(gs[2,0])
         self._sldr_divider = make_axes_locatable(self._sldr_init)
         self._ax_sldr, self._sldrs = {}, {}
+        
+        self._ax_save = self._fig.add_subplot(gs[2,1])
 
         # reset internal state
         self._models, self._data = [], []
@@ -338,7 +345,7 @@ class Gui(object):
 
         # display the gui
         self._fig.tight_layout()
-        self._fig.subplots_adjust(wspace=0.01)
+        self._fig.subplots_adjust(hspace=0.25, wspace=0.25)
 
         # TODO : maximise window for other platforms and backends
         mng = plt.get_current_fig_manager()
