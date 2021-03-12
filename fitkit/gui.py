@@ -32,7 +32,7 @@ class Gui(object):
     def __init__(self,
                  parameter_resolution=100,
                  log_parameters=[],
-                 figsize=(8.25, 11.75)):
+                 figsize=(11.75, 8.25)):
         """ Gui
         Args:
             parameter_resolution:
@@ -44,7 +44,7 @@ class Gui(object):
                 will apply the transform to none of the parameters.
             figsize:
                 the size of the gui figure (relevant for saving the plot).
-                default = A4.
+                default = landscape A4.
         """
         self._figsize = figsize
         self._parameter_resolution = parameter_resolution
@@ -339,6 +339,11 @@ class Gui(object):
         # display the gui
         self._fig.tight_layout()
         self._fig.subplots_adjust(wspace=0.01)
+
+        # TODO : maximise window for other platforms and backends
+        mng = plt.get_current_fig_manager()
+        mng.window.state('zoomed')
+
         plt.show(block=True)
 
         # reset the gui so that the user can call self.show again straight away
