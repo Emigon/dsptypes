@@ -234,9 +234,15 @@ class Parametric1D(MutableMapping):
 
         Args:
             sigma:      the input signal to fit.
-            method:     see scipy.minimize for local optimisation methods.
-                        otherwise global methods 'differential_evolution', 
-                        'shgo and 'dual_annealing' are supported.
+            method:     the optimization method to use, either 'curve_fit'
+                        from scipy.optimize, any of scipy's local optimization
+                        methods (see scipy.optimize.minimize), and some of
+                        scipy's global methods are supported 
+                        ('differential_evolution', 'shgo and 'dual_annealing').
+                        when specifying 'curve_fit' the default least_squares
+                        metric must be used. as we use curve_fit with parameter
+                        boundaries, the 'trf' optimizer is applied under the 
+                        hood.
             errf:       an error function that accepts (v, self, sigma, tform) 
                         as arguments, where v is the ParameterDict associated 
                         with self. as in scipy this functions return type must 
@@ -268,20 +274,41 @@ class Parametric1D(MutableMapping):
         args = (self, sigma, metric)
         if method in global_methods:
             opt_result = global_methods[method](errf, args=args, bounds=b, **opts)
+            fit_mdata = opt_result
+        elif method == 'curve_fit':
+            if metric is not Parametric1D.default_metric:
+                raise RuntimeError('Cannot specify metric for curve_fit')
+            if np.any(np.imag(sigma)):
+                raise RuntimeError('Cannot curve_fit complex data')
+
+            def cf_func(x, *params):
+                operating_pt = {k: params[i] for i, k in enumerate(self) \
+                                    if k not in self._frozen}
+                return np.real(self(x, parameters=operating_pt))
+
+            x, pcov = spopt.curve_fit(cf_func,
+                                      _retrieve_x(sigma),
+                                      np.real(sigma),
+                                      p0=x0,
+                                      bounds=np.array(b).T,
+                                      **opts)
+            opt_result = type('CFResult', (object,), {'x': x, 'pcov': pcov})
+            fit_mdata = {'x': x, 'pcov': pcov}
         else:
             opt_result = spopt.minimize(errf, x0, args=args, method=method, **opts)
+            fit_mdata = opt_result
 
         if np.any(np.isnan(opt_result.x)):
             raise RuntimeError('Optimization failed to explore parameter space')
 
-        # the last iteration isn't necessarily the global minimum so we set it here
+        # the last iteration isn't necessarily the minimum so we set it here
         for i, key in enumerate(key for key in self if key not in self._frozen):
             self.set(key, opt_result.x[i], clip=True)
-
+        
         return {
             'parameters':   {k: self[k] for k in self},
             'fitted':       sigma,
-            'opt_result':   opt_result,
+            'opt_result':   fit_mdata,
         }
 
     def freeze(self, parameter_names):

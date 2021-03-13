@@ -156,3 +156,16 @@ def test_fit(model, sinusoid):
     shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
     opt_result = pm.fit(sinusoid, 'shgo', opts = shgo_opts)
     pm.gui(sinusoid.index, data=[sinusoid])
+
+@pytest.mark.plot
+def test_curve_fit(model):
+    pm = Parametric1D(*model.values(), call_type=pd.Series)
+    x = np.linspace(-1, 1, 100)
+    test_case = pm(x, parameters={'tau': 4.7, 'alpha': -3}) + \
+                5*np.random.normal(size=100)
+
+    pm['tau'] = 1
+    pm['alpha'] = 0
+
+    result = pm.fit(test_case, method='curve_fit')
+    pm.gui(x, data=[test_case])
