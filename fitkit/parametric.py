@@ -217,7 +217,7 @@ class Parametric1D(MutableMapping):
             self.set(key, val, clip=clip)
         return self.f(*(self[k] for k in self), x)
 
-    def default_errf(v, self, sigma, metric):
+    def default_errf(v, self, t, sigma, metric):
         try:
             for i, key in enumerate(key for key in self if key not in self._frozen):
                 self.set(key, v[i], clip=False)
@@ -225,12 +225,13 @@ class Parametric1D(MutableMapping):
             warnings.warn('optimizer attempted to set parameter outside of bounds')
             return float('inf')
 
-        return np.real(metric(self(_retrieve_x(sigma)), sigma))
+        return np.real(metric(self(t), sigma))
 
     def default_metric(sigma1, sigma2):
         return sum((y1 - y2)**2 for y1, y2 in zip(sigma1, sigma2))
 
     def fit(self,
+            t,
             sigma,
             method='Nelder-Mead',
             opts={},
@@ -277,7 +278,7 @@ class Parametric1D(MutableMapping):
         x0 = [self[k] for k in self if k not in self._frozen]
         b  = [(self._l[k], self._u[k]) for k in self if k not in self._frozen]
 
-        args = (self, sigma, metric)
+        args = (self, t, sigma, metric)
         if method in global_methods:
             opt_result = global_methods[method](errf, args=args, bounds=b, **opts)
             fit_mdata = opt_result
@@ -293,7 +294,7 @@ class Parametric1D(MutableMapping):
                 return np.real(self(x, parameters=operating_pt))
 
             x, pcov = spopt.curve_fit(cf_func,
-                                      _retrieve_x(sigma),
+                                      t,
                                       np.real(sigma),
                                       p0=x0,
                                       bounds=np.array(b).T,

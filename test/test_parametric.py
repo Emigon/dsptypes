@@ -129,7 +129,7 @@ def test_arithmetic_between_Pm1Ds(model, model2):
 def test_fitshgo(model, sinusoid):
     pm = Parametric1D(*model.values(), call_type=type(sinusoid))
     shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
-    table = pm.fit(sinusoid, 'shgo', opts = shgo_opts)
+    table = pm.fit(sinusoid.index.values, sinusoid.values, 'shgo', opts = shgo_opts)
 
     for key in table:
         assert key in ['parameters', 'fitted', 'opt_result']
@@ -143,19 +143,19 @@ def test_eval_at_points():
                       call_type=pd.Series)
 
     y1 = pm(0.5)
-    y2 = pm([1, 2, 4])
+    y2 = pm(np.array([1, 2, 4]))
 
 @pytest.mark.plot
 def test_gui(model, sinusoid):
-    pm = Parametric1D(*model.values(), call_type=pd.Series)
-    pm.gui(sinusoid.index, data=[sinusoid])
+    pm = Parametric1D(*model.values())
+    pm.gui(sinusoid.index.values, data=[(sinusoid.index.values, sinusoid.values)])
 
 @pytest.mark.plot
 def test_fit(model, sinusoid):
     pm = Parametric1D(*model.values())
     shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
-    opt_result = pm.fit(sinusoid, 'shgo', opts = shgo_opts)
-    pm.gui(sinusoid.index, data=[sinusoid])
+    opt_result = pm.fit(sinusoid.index.values, sinusoid.values, 'shgo', opts = shgo_opts)
+    pm.gui(sinusoid.index.values, data=[(sinusoid.index.values, sinusoid.values)])
 
 @pytest.mark.plot
 def test_curve_fit(model):
@@ -167,5 +167,5 @@ def test_curve_fit(model):
     pm['tau'] = 1
     pm['alpha'] = 0
 
-    result = pm.fit(test_case, method='curve_fit')
-    pm.gui(x, data=[test_case])
+    result = pm.fit(x, test_case, method='curve_fit')
+    pm.gui(x, data=[(x, test_case)])
