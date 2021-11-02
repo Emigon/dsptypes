@@ -205,11 +205,7 @@ class Parametric1D(MutableMapping):
         """ evaluate the parametric expression over x for the current parameter values """
         for key, val in parameters.items():
             self.set(key, val, clip=clip)
-        parameter_values = [self[k] for k in self]
-        if hasattr(x, '__iter__'):
-            return [self.f(*parameter_values, pt) for pt in x]
-        else:
-            return self.f(*parameter_values, x)
+        return self.f(*(self[k] for k in self), x)
 
     def default_errf(v, self, sigma, metric):
         try:
