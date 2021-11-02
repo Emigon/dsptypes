@@ -1,0 +1,23 @@
+tox_package_tests:
+    stage: test
+    script: tox
+    image: docker-registry.saludamedical.com:5050/docker-images/python-base:1 
+    tags:
+        - docker
+        - linux
+
+build_pypkg:
+    script: pypkg_upload
+    stage: deploy
+    image: docker-registry.saludamedical.com:5050/docker-images/python-base:1 
+    tags:
+        - docker
+        - linux
+
+    # run for builds tagged as per v1.2.34 only
+    only:
+        - /^v\d+.\d+.\d+$/
+
+    # must be a python runner with the deploy credentials
+    tags:
+        - pypkg
