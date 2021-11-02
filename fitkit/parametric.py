@@ -19,11 +19,10 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.widgets import Slider, RadioButtons
 
-from .call_types import _typefactory, _retrieve_x
 from .gui import *
 
 class Parametric1D(MutableMapping):
-    def __init__(self, expr, params, call_type=np.complex128):
+    def __init__(self, expr, params):
         """ Parametric1D
         Args:
             expr:       a sympy expression containing one free variable, and as
@@ -33,12 +32,7 @@ class Parametric1D(MutableMapping):
                         key must be the symbol.name of one of the parameters in
                         expr. (lower, upper) determine the bounds of the
                         parameter space. setpoint must fall withing these bounds.
-            call_type:  the type returned by Parametric1D.__call__. Supported
-                        special types are xarray.DataArray and pd.Series that
-                        can retain the x-axis the function was evaluated over.
         """
-        self._call_type = call_type
-
         if not(isinstance(expr, sympy.Expr)):
             raise TypeError("expr must be a sympy expression")
 
@@ -210,7 +204,6 @@ class Parametric1D(MutableMapping):
 
         return '\n'.join(str)
 
-    @_typefactory
     def __call__(self, x, parameters={}, clip=False):
         """ evaluate the parametric expression over x for the current parameter values """
         for key, val in parameters.items():

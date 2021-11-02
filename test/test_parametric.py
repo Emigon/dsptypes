@@ -94,7 +94,7 @@ def test_parameter_modification(model):
         pm['tau'] = 6
 
 def test_call(model):
-    pm = Parametric1D(*model.values(), call_type=np.float64)
+    pm = Parametric1D(*model.values())
 
     x = np.linspace(0, 1, 100)
     y_np = np.exp(model['params']['tau'][1]*x) + model['params']['alpha'][1]
@@ -127,20 +127,17 @@ def test_arithmetic_between_Pm1Ds(model, model2):
     assert pm6._u['alpha'] == 3
 
 def test_fitshgo(model, sinusoid):
-    pm = Parametric1D(*model.values(), call_type=type(sinusoid))
+    pm = Parametric1D(*model.values())
     shgo_opts = {'n': 5, 'iters': 1, 'sampling_method': 'sobol'}
     table = pm.fit(sinusoid.index.values, sinusoid.values, 'shgo', opts = shgo_opts)
 
     for key in table:
         assert key in ['parameters', 'fitted', 'opt_result']
-    assert type(table['parameters']) == dict
-    assert type(table['fitted']) == pm._call_type
+    assert type(table['parameters']) is dict
 
 def test_eval_at_points():
     x, a0, k = sp.symbols('x a0 k')
-    pm = Parametric1D(a0 + k*x**2,\
-                      {'a0': (7.372, 7.374, 7.376), 'k': (-.001, -.0001, 0)},
-                      call_type=pd.Series)
+    pm = Parametric1D(a0 + k*x**2, {'a0': (7.372, 7.374, 7.376), 'k': (-.001, -.0001, 0)})
 
     y1 = pm(0.5)
     y2 = pm(np.array([1, 2, 4]))
@@ -159,10 +156,10 @@ def test_fit(model, sinusoid):
 
 @pytest.mark.plot
 def test_curve_fit(model):
-    pm = Parametric1D(*model.values(), call_type=pd.Series)
+    pm = Parametric1D(*model.values())
     x = np.linspace(-1, 1, 100)
     test_case = pm(x, parameters={'tau': 4.7, 'alpha': -3}) + \
-                5*np.random.normal(size=100)
+                   5*np.random.normal(size=100)
 
     pm['tau'] = 1
     pm['alpha'] = 0
