@@ -8,9 +8,9 @@ setup(name='fitkit',
       author_email='danielparker@live.com.au',
       packages=find_packages(),
       install_requires=[
-          'sympy>=1.4',
           'numpy>=1.21.2',
           'sympy>=1.8',
+          'scipy>=1.7.1',
           'matplotlib>=3.4.3',
       ]
 )
