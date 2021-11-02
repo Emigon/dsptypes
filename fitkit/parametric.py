@@ -125,6 +125,16 @@ class Parametric1D(MutableMapping):
         """ user can see the expression but can't modify it once initialised """
         return self._expr
 
+    @property
+    def parameters_with_bounds(self):
+        """ property for getting the parameters in a dictionary """
+        return {k: (self._l[k], p, self._u[k]) for k, p in self.items()}
+ 
+    @property
+    def parameters(self):
+        """ property for getting the parameters in a dictionary """
+        return {k: p for k, p in self.items()}
+
     # {{{ define arithmetic with multiple Parametric1D objects
     def _combine_parameters(self, other):
         params = {k: (self._l[k], self[k], self._u[k]) for k in self}
