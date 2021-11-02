@@ -5,6 +5,7 @@ custom horizontal radio buttons based on the code posted here:
 """
 
 import matplotlib.pyplot as plt
+from matplotlib import cbook
 from matplotlib.widgets import AxesWidget, Slider, Button, RadioButtons
 
 class HorzRadioButtons(RadioButtons):
@@ -57,8 +58,7 @@ class HorzRadioButtons(RadioButtons):
         self.circles = self.box.legendHandles
         for c in self.circles:
             c.set_picker(5)
-        self.cnt = 0
-        self.observers = {}
+        self._observers = cbook.CallbackRegistry()
 
         self.connect_event('pick_event', self._clicked)
 
