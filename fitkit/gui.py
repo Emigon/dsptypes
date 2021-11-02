@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.widgets import AxesWidget, Slider, Button, RadioButtons
 
-from .call_types import _typefactory, _retrieve_x
 from .radio import HorzRadioButtons
 
 default_complex_transforms = {
@@ -142,7 +141,7 @@ class Gui(object):
         self._models.append((x, pm, line, ax))
         return ax
 
-    def register_data(self, sigma, axis=None, **plot_kwargs):
+    def register_data(self, x, sigma, axis=None, **plot_kwargs):
         """ register some data with the gui
         Args:
             sigma:  the data to plot in the gui. typically this will be a
@@ -162,7 +161,7 @@ class Gui(object):
         """
         # keep track of function calls
         self._register_history.append(
-            (Gui.register_data, (sigma,), {'axis': axis}, plot_kwargs)
+            (Gui.register_data, (x, sigma), {'axis': axis}, plot_kwargs)
         )
 
         if axis is None:
@@ -174,9 +173,9 @@ class Gui(object):
 
                 self._axes.append(ax1)
                 self._ax_btns.append(ax2)
-            line, = self._axes[-1].plot(_retrieve_x(sigma), np.real(sigma), **plot_kwargs)
+            line, = self._axes[-1].plot(x, np.real(sigma), **plot_kwargs)
         else:
-            line, = axis.plot(_retrieve_x(sigma), np.real(sigma), **plot_kwargs)
+            line, = axis.plot(x, np.real(sigma), **plot_kwargs)
 
         ax = self._axes[-1] if axis is None else axis
         self._data.append((sigma, line, ax))

@@ -376,7 +376,7 @@ class Parametric1D(MutableMapping):
         """
         gui = Gui(parameter_resolution=parameter_resolution)
         ax = gui.register_model(self, x)
-        for trace in data:
-            gui.register_data(trace, axis=ax)
+        for x, y in data:
+            gui.register_data(x, y, axis=ax)
         gui.show(transforms=transforms, savefig_dir=savefig_dir)
         plt.close()
