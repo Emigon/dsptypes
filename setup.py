@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='fitkit',
-      version='0.3.0',
+      version='0.4.0',
       description='Python methods and objects for fitting functions to data',
       url='https://github.com/Emigon/fitkit',
       author='Daniel Parker',
@@ -9,9 +9,8 @@ setup(name='fitkit',
       packages=find_packages(),
       install_requires=[
           'sympy>=1.4',
-          'numpy>=1.16.3',
-          'scipy>=1.3.0',
-          'pandas>=0.24.2',
-          'matplotlib>=3.0.3',
+          'numpy>=1.21.2',
+          'sympy>=1.8',
+          'matplotlib>=3.4.3',
       ]
 )
