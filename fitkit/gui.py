@@ -352,10 +352,6 @@ class Gui(object):
         self._fig.tight_layout()
         self._fig.subplots_adjust(hspace=0.25, wspace=0.25)
 
-        # TODO : maximise window for other platforms and backends
-        mng = plt.get_current_fig_manager()
-        mng.window.state('zoomed')
-
         plt.show(block=True)
 
         # reset the gui so that the user can call self.show again straight away
